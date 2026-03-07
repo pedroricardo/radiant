@@ -97,12 +97,12 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 			})
 
 		/**
-		 * Renderiza exatamente 1 frame de saída.
+		 * Renders exactly one output frame.
 		 *
-		 * Regras:
-		 * - processa todos os comandos pendentes antes de renderizar
-		 * - se houver transição, cruza cluster antigo/novo (crossfade linear)
-		 * - se não houver source ativa, retorna silêncio
+		 * Rules:
+		 * - processes all pending commands before rendering
+		 * - if there is an active transition, crossfades old/new clusters
+		 * - if no source is active, returns silence
 		 */
 		const nextFrame = Effect.gen(function* () {
 			const commands = Chunk.toReadonlyArray(yield* Queue.takeAll(commandQueue))

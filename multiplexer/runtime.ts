@@ -13,7 +13,7 @@ import type { MultiplexerError } from "./errors"
 import type { AudioMultiplexerConfig, MultiplexerSourceInput, RuntimeCluster, RuntimeSource } from "./types"
 
 /**
- * Valida parâmetros estáticos do motor.
+ * Validates static engine configuration.
  */
 export const validateConfig = (config: AudioMultiplexerConfig): Effect.Effect<void, MultiplexerInvalidConfigError> =>
 	Effect.gen(function* () {
@@ -36,14 +36,14 @@ export const validateConfig = (config: AudioMultiplexerConfig): Effect.Effect<vo
 	})
 
 /**
- * Converte duração do crossfade para quantidade de samples (por canal).
+ * Converts crossfade duration (ms) into number of samples per channel.
  */
 export const crossfadeSamples = (sampleRate: number, crossfadeMs: number): number =>
 	Math.max(0, Math.round((crossfadeMs / 1_000) * sampleRate))
 
 /**
- * Validação antecipada quando `setCluster` é chamado.
- * Isso evita enfileirar comando inválido.
+ * Early validation for `setCluster`.
+ * Prevents enqueuing invalid commands.
  */
 export const validateSourceInputs = (
 	sources: ReadonlyArray<MultiplexerSourceInput>,
@@ -77,10 +77,10 @@ export const validateSourceInputs = (
 	})
 
 /**
- * Instancia um cluster em runtime:
- * - normaliza sampleRate
- * - cria `pull` da stream para leitura incremental
- * - inicializa buffer vazio por source
+ * Instantiates a runtime cluster:
+ * - normalizes sampleRate
+ * - creates a stream `pull` for incremental consumption
+ * - initializes an empty per-source buffer
  */
 export const createRuntimeCluster = (
 	clusterId: number,
@@ -114,12 +114,12 @@ export const createRuntimeCluster = (
 	})
 
 /**
- * Renderiza 1 frame de uma source.
+ * Renders one frame from a source.
  *
- * Processo:
- * 1) puxa chunks até ter dados suficientes para `frameLength`
- * 2) monta frame de saída e mantém sobra no buffer
- * 3) se EOF + buffer vazio => source removível
+ * Flow:
+ * 1) pull chunks until we have enough data for `frameLength`
+ * 2) build the output frame and keep leftovers in the buffer
+ * 3) if EOF + empty buffer => source can be removed
  */
 export const renderSourceFrame = (
 	source: RuntimeSource,
@@ -186,10 +186,10 @@ export const renderSourceFrame = (
 	})
 
 /**
- * Renderiza 1 frame de um cluster:
- * - renderiza cada source
- * - remove sources encerradas
- * - mistura resultado (média)
+ * Renders one frame from a cluster:
+ * - renders each source
+ * - removes ended sources
+ * - mixes the result using averaging
  */
 export const renderClusterFrame = (
 	cluster: RuntimeCluster,

@@ -1,20 +1,20 @@
 /**
- * Este módulo contém só matemática/transformações de áudio PCM interleaved.
+ * This module contains only interleaved PCM audio math / transforms.
  *
- * Convenções usadas:
- * - Frame = Float32Array com `frameLength = frameSamples * channels`
- * - Samples em [-1, 1]
- * - Estéreo interleaved: L0, R0, L1, R1...
+ * Conventions:
+ * - Frame = Float32Array with `frameLength = frameSamples * channels`
+ * - Samples are in [-1, 1]
+ * - Interleaved stereo layout: L0, R0, L1, R1...
  */
 
 /**
- * Produz um frame de silêncio (todos os samples em 0).
+ * Produces a silent frame (all samples = 0).
  */
 export const makeSilenceFrame = (frameLength: number): Float32Array => new Float32Array(frameLength)
 
 /**
- * Junta dois buffers de áudio num único array contínuo.
- * Usado para acumular dados puxados da source até completar um frame de saída.
+ * Concatenates two audio buffers into one contiguous array.
+ * Used to accumulate pulled source data until one output frame is full.
  */
 export const concatFloat32 = (a: Float32Array, b: Float32Array): Float32Array => {
 	if (a.length === 0) {
@@ -30,8 +30,8 @@ export const concatFloat32 = (a: Float32Array, b: Float32Array): Float32Array =>
 }
 
 /**
- * Faz a mistura de N frames por média simples.
- * Evita clipping grosseiro em relação a soma direta.
+ * Mixes N frames using simple averaging.
+ * This is safer than direct summation because it reduces clipping risk.
  */
 export const averageFrames = (frames: ReadonlyArray<Float32Array>, frameLength: number): Float32Array => {
 	if (frames.length === 0) {
@@ -51,7 +51,7 @@ export const averageFrames = (frames: ReadonlyArray<Float32Array>, frameLength: 
 }
 
 /**
- * Aplica ganho linear no frame inteiro.
+ * Applies a linear gain to the whole frame.
  */
 export const applyGain = (frame: Float32Array, gain: number): Float32Array => {
 	if (gain === 1) {
@@ -65,8 +65,8 @@ export const applyGain = (frame: Float32Array, gain: number): Float32Array => {
 }
 
 /**
- * Crossfade linear entre dois frames:
- * t=0 => só frame "from", t=1 => só frame "to".
+ * Linear crossfade between two frames:
+ * t=0 => only "from", t=1 => only "to".
  */
 export const crossfadeFrames = (from: Float32Array, to: Float32Array, t: number): Float32Array => {
 	const length = Math.min(from.length, to.length)
