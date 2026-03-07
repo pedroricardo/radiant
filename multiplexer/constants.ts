@@ -1,0 +1,4 @@
+export const DEFAULT_FRAME_SAMPLES = 1152
+export const DEFAULT_SAMPLE_RATE = 44_100
+export const DEFAULT_CHANNELS: 1 | 2 = 2
+export const DEFAULT_CROSSFADE_MS = 300

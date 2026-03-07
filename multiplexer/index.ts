@@ -1,7 +1,14 @@
-import { Effect, Stream } from "effect";
-
-export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioMultiplexer", {
-	effect: Effect.gen(function*() {
-		return {}
-	})
-}) {}
+export { AudioMultiplexer } from "./service"
+export type { AudioMultiplexerConfig, MultiplexerSourceInput } from "./types"
+export {
+	MultiplexerCommandQueueError,
+	MultiplexerInvalidConfigError,
+	MultiplexerInvalidCrossfadeDurationError,
+	MultiplexerInvalidMasterVolumeError,
+	MultiplexerInvalidSourceVolumeError,
+	MultiplexerSourceChannelMismatchError,
+	MultiplexerSourceFrameShapeError,
+	MultiplexerSourceInvalidSampleRateError,
+	MultiplexerSourcePullError,
+	type MultiplexerError,
+} from "./errors"
