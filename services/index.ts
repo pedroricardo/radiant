@@ -1,6 +1,7 @@
 export * as Live from "../environments/Live"
 export * as ApiServer from "./ApiServer"
 export * as AudioMultiplexer from "./AudioMultiplexer"
+export * as Drizzle from "./Drizzle"
 export * as IcyEncoder from "./IcyEncoder"
 export * as PlayoutManager from "./PlayoutManager"
 export * as RadioManager from "./RadioManager"
