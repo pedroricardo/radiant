@@ -1,6 +1,6 @@
 import * as lamejs from "@breezystack/lamejs"
 import { Data, Effect, Stream } from "effect"
-import { AudioSource } from "../audio-source"
+import * as AudioSource from "../../lib/AudioSource"
 
 function concatUint8Arrays(chunks: ReadonlyArray<Uint8Array>): Uint8Array {
 	let totalLength = 0
@@ -96,7 +96,12 @@ const encodeFrame = (
 		})
 	})
 
-const injectMetadata = (mp3Chunk: Uint8Array, state: { bytesSinceLastMeta: number }, metadata: Uint8Array, metaInterval: number): Uint8Array => {
+const injectMetadata = (
+	mp3Chunk: Uint8Array,
+	state: { bytesSinceLastMeta: number },
+	metadata: Uint8Array,
+	metaInterval: number,
+): Uint8Array => {
 	if (metaInterval <= 0 || mp3Chunk.length === 0) {
 		return mp3Chunk
 	}
@@ -123,36 +128,35 @@ const injectMetadata = (mp3Chunk: Uint8Array, state: { bytesSinceLastMeta: numbe
 }
 
 export class IcyEncoder extends Effect.Service<IcyEncoder>()("IcyEncoder", {
-	accessors: true,
-		effect: Effect.gen(function* () {
-			const encode = Effect.fn("IcyEncoder.encode")(function* (
-				source: AudioSource.AudioSource<number, any, any>,
-				options: {
-					kbps: number
-					metaInterval?: number
-					metadataTitle?: string
-				},
-			) {
-				const channels = source.channels
-				const sampleRate = source.sampleRate
-				const metaInterval = options.metaInterval ?? DEFAULT_META_INTERVAL
-				const metadataTitle = options.metadataTitle ?? DEFAULT_METADATA_TITLE
-				if (!Number.isInteger(channels) || (channels !== 1 && channels !== 2)) {
-					return yield* Effect.fail(
+	effect: Effect.gen(function* () {
+		const encode = Effect.fn("IcyEncoder.encode")(function* <E = never, R = never>(
+			source: AudioSource.AudioSource<number, E, R>,
+			options: {
+				kbps: number
+				metaInterval?: number
+				metadataTitle?: string
+			},
+		) {
+			const channels = source.channels
+			const sampleRate = source.sampleRate
+			const metaInterval = options.metaInterval ?? DEFAULT_META_INTERVAL
+			const metadataTitle = options.metadataTitle ?? DEFAULT_METADATA_TITLE
+			if (!Number.isInteger(channels) || (channels !== 1 && channels !== 2)) {
+				return yield* Effect.fail(
 					new EncodingError({
 						message: `unsupported channels: ${channels}`,
 						cause: { channels },
-						}),
-					)
-				}
-				if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
-					return yield* Effect.fail(
-						new EncodingError({
-							message: `invalid sampleRate: ${sampleRate}`,
-							cause: { sampleRate },
-						}),
-					)
-				}
+					}),
+				)
+			}
+			if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
+				return yield* Effect.fail(
+					new EncodingError({
+						message: `invalid sampleRate: ${sampleRate}`,
+						cause: { sampleRate },
+					}),
+				)
+			}
 			if (!Number.isFinite(options.kbps) || options.kbps <= 0) {
 				return yield* Effect.fail(
 					new EncodingError({
@@ -170,14 +174,14 @@ export class IcyEncoder extends Effect.Service<IcyEncoder>()("IcyEncoder", {
 				)
 			}
 
-				const state = { bytesSinceLastMeta: 0 }
-				const metadataChunk = createICYMetadata(metadataTitle)
-				const mp3Encoder = new lamejs.Mp3Encoder(channels, sampleRate, options.kbps)
+			const state = { bytesSinceLastMeta: 0 }
+			const metadataChunk = createICYMetadata(metadataTitle)
+			const mp3Encoder = new lamejs.Mp3Encoder(channels, sampleRate, options.kbps)
 
-				return source.stream.pipe(
-					Stream.mapEffect((frame) =>
-						Effect.map(encodeFrame(mp3Encoder, frame, channels), (chunk) =>
-							injectMetadata(chunk, state, metadataChunk, metaInterval),
+			return source.stream.pipe(
+				Stream.mapEffect((frame) =>
+					Effect.map(encodeFrame(mp3Encoder, frame, channels), (chunk) =>
+						injectMetadata(chunk, state, metadataChunk, metaInterval),
 					),
 				),
 				Stream.concat(
@@ -185,7 +189,8 @@ export class IcyEncoder extends Effect.Service<IcyEncoder>()("IcyEncoder", {
 						Effect.map(
 							Effect.try({
 								try: () => new Uint8Array(mp3Encoder.flush()),
-								catch: (e) => new EncodingError({ message: "failed to flush mp3 encoder", cause: e }),
+								catch: (e) =>
+									new EncodingError({ message: "failed to flush mp3 encoder", cause: e }),
 							}),
 							(chunk) => injectMetadata(chunk, state, metadataChunk, metaInterval),
 						),
@@ -196,3 +201,6 @@ export class IcyEncoder extends Effect.Service<IcyEncoder>()("IcyEncoder", {
 		return { encode }
 	}),
 }) {}
+
+export type ByteStream<E = never, R = never> = Stream.Stream<Uint8Array<ArrayBufferLike>, E, R>
+export const layer = IcyEncoder.Default

@@ -1,5 +1,5 @@
-export { AudioMultiplexer } from "./service"
-export type { AudioMultiplexerConfig, MultiplexerSourceInput } from "./types"
+import { AudioMultiplexer } from "./AudioMultiplexer"
+
 export {
 	MultiplexerCommandQueueError,
 	MultiplexerInvalidConfigError,
@@ -11,4 +11,7 @@ export {
 	MultiplexerSourceInvalidSampleRateError,
 	MultiplexerSourcePullError,
 	type MultiplexerError,
-} from "./errors"
+} from "./Error"
+export type { AudioMultiplexerConfig, MultiplexerSourceInput } from "./types"
+export { AudioMultiplexer }
+export const layer = AudioMultiplexer.Default

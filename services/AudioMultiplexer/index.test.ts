@@ -1,7 +1,7 @@
 import { describe, expect } from "bun:test"
 import { Chunk, Duration, Effect, Fiber, Layer, Stream, TestClock } from "effect"
-import { it } from "../bun-test-effect"
-import { AudioSource } from "../audio-source"
+import { it } from "../../bun-test-effect"
+import * as AudioSource from "../../lib/AudioSource"
 import { AudioMultiplexer, MultiplexerSourceChannelMismatchError } from "./index"
 
 const FRAME_SAMPLES = 1152
@@ -64,22 +64,36 @@ describe("AudioMultiplexer", () => {
 			Effect.gen(function* () {
 				const multiplexer = yield* AudioMultiplexer
 				const loud = yield* AudioSource.fromPCM(
-					[constantFrame(1), constantFrame(1), constantFrame(1), constantFrame(1), constantFrame(1)],
+					[
+						constantFrame(1),
+						constantFrame(1),
+						constantFrame(1),
+						constantFrame(1),
+						constantFrame(1),
+					],
 					SAMPLE_RATE,
 					2,
 				)
 				const quiet = yield* AudioSource.fromPCM(
-					[constantFrame(0), constantFrame(0), constantFrame(0), constantFrame(0), constantFrame(0)],
+					[
+						constantFrame(0),
+						constantFrame(0),
+						constantFrame(0),
+						constantFrame(0),
+						constantFrame(0),
+					],
 					SAMPLE_RATE,
 					2,
 				)
 
-				yield* multiplexer.setCluster([{ id: "loud", source: loud }], { crossfadeMs: 0 })
+				yield* multiplexer.setCluster([{ id: "loud", source: loud }], { crossfadeDuration: 0 })
 				const before = yield* collectFrames(multiplexer.output, 1)
 				expect(before).toHaveLength(1)
 				expect(firstSample(before[0]!)).toBeCloseTo(1, 5)
 
-				yield* multiplexer.setCluster([{ id: "quiet", source: quiet }], { crossfadeMs: 100 })
+				yield* multiplexer.setCluster([{ id: "quiet", source: quiet }], {
+					crossfadeDuration: "100 millis",
+				})
 				const during = yield* collectFrames(multiplexer.output, 4)
 				const levels = during.map((frame) => firstSample(frame))
 

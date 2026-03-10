@@ -6,22 +6,25 @@ import {
 	HttpServer,
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { DateTime, Effect, Layer, pipe } from "effect"
-import { RadiantClient } from "./client"
-import { radiantApi } from "./contract"
-import { AudioSource } from "./audio-source"
+import { DateTime, Effect, Layer } from "effect"
+import * as RadiantClient from "./RadiantClient"
 
-const usersGroupLive = HttpApiBuilder.group(radiantApi, "users", (handlers) =>
-	handlers.handle("getUser", ({ path: { id } }) =>
-		Effect.succeed({
-			id,
-			name: "John Doe",
-			createdAt: DateTime.unsafeNow(),
-		}),
-	),
+const usersGroupLive = HttpApiBuilder.group(
+	RadiantClient.ApiContract.httpApi,
+	"users",
+	(handlers) =>
+		handlers.handle("getUser", ({ path: { id } }) =>
+			Effect.succeed({
+				id,
+				name: "John Doe",
+				createdAt: DateTime.unsafeNow(),
+			}),
+		),
 )
 
-const RadiantApiLive = HttpApiBuilder.api(radiantApi).pipe(Layer.provide(usersGroupLive))
+const RadiantApiLive = HttpApiBuilder.api(RadiantClient.ApiContract.httpApi).pipe(
+	Layer.provide(usersGroupLive),
+)
 const RadiantApiLiveHttpServer = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 	Layer.provide(HttpApiSwagger.layer()),
 	Layer.provide(HttpApiBuilder.middlewareCors()),

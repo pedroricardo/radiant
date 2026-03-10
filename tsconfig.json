@@ -24,6 +24,14 @@
 		// Some stricter flags (disabled by default)
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
-		"noPropertyAccessFromIndexSignature": false
+		"noPropertyAccessFromIndexSignature": false,
+		"paths": {
+			"$lib": ["./lib"],
+			"$lib/*": ["./lib/*"],
+			"$services": ["./services"],
+			"$services/*": ["./services/*"],
+			"$envs": ["./environments"],
+			"$envs/*": ["./environments/*"]
+		}
 	}
 }

@@ -1,5 +1,5 @@
-import { AudioSource } from "../audio-source"
-import { Chunk, Effect, Option } from "effect"
+import { Chunk, Duration, Effect, Option } from "effect"
+import * as AudioSource from "../../lib/AudioSource"
 
 export interface MultiplexerSourceInput {
 	readonly id: string
@@ -11,7 +11,7 @@ export interface AudioMultiplexerConfig {
 	readonly sampleRate: number
 	readonly channels: 1 | 2
 	readonly frameSamples: number
-	readonly defaultCrossfadeMs: number
+	readonly defaultCrossfadeDuration: Duration.DurationInput
 }
 
 export type RuntimeSource = {
@@ -35,3 +35,11 @@ export type MultiplexerState = {
 	readonly fadeTotalSamples: number
 	readonly masterVolume: number
 }
+export const MULTIPLEXER_STATE_DEFAULT = {
+	nextClusterId: 1,
+	activeCluster: null,
+	fadingOutCluster: null,
+	fadeProgressSamples: 0,
+	fadeTotalSamples: 0,
+	masterVolume: 1,
+} satisfies MultiplexerState

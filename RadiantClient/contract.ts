@@ -13,4 +13,4 @@ const usersGroup = HttpApiGroup.make("users").add(
 	HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User),
 )
 
-export const radiantApi = HttpApi.make("radiant").add(usersGroup)
+export const httpApi = HttpApi.make("radiant").add(usersGroup)

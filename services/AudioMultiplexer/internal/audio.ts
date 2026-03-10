@@ -33,7 +33,10 @@ export const concatFloat32 = (a: Float32Array, b: Float32Array): Float32Array =>
  * Mixes N frames using simple averaging.
  * This is safer than direct summation because it reduces clipping risk.
  */
-export const averageFrames = (frames: ReadonlyArray<Float32Array>, frameLength: number): Float32Array => {
+export const averageFrames = (
+	frames: ReadonlyArray<Float32Array>,
+	frameLength: number,
+): Float32Array => {
 	if (frames.length === 0) {
 		return makeSilenceFrame(frameLength)
 	}

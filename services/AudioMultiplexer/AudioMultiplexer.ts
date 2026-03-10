@@ -1,14 +1,19 @@
-import { AudioSource } from "../audio-source"
-import { Chunk, Duration, Effect, Exit, Queue, Ref, Schedule, Scope, Stream } from "effect"
-import { Command } from "./commands"
-import { applyGain, crossfadeFrames, makeSilenceFrame } from "./audio"
-import { DEFAULT_CHANNELS, DEFAULT_CROSSFADE_MS, DEFAULT_FRAME_SAMPLES, DEFAULT_SAMPLE_RATE } from "./constants"
+import * as AudioSource from "$lib/AudioSource"
+import { Chunk, Duration, Effect, Queue, Ref, Schedule, Scope, Stream } from "effect"
+import {
+	DEFAULT_CHANNELS,
+	DEFAULT_CROSSFADE_DURATION,
+	DEFAULT_FRAME_SAMPLES,
+	DEFAULT_SAMPLE_RATE,
+} from "./constants"
+import type { MultiplexerError } from "./Error"
 import {
 	MultiplexerCommandQueueError,
 	MultiplexerInvalidCrossfadeDurationError,
 	MultiplexerInvalidMasterVolumeError,
-} from "./errors"
-import type { MultiplexerError } from "./errors"
+} from "./Error"
+import * as internal from "./internal"
+import { applyGain, crossfadeFrames, makeSilenceFrame } from "./internal/audio"
 import {
 	createRuntimeCluster,
 	crossfadeSamples,
@@ -20,19 +25,18 @@ import type { AudioMultiplexerConfig, MultiplexerSourceInput, MultiplexerState }
 
 export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioMultiplexer", {
 	accessors: true,
-	effect: Effect.gen(function* () {
+	scoped: Effect.gen(function* () {
 		const config: AudioMultiplexerConfig = {
 			sampleRate: DEFAULT_SAMPLE_RATE,
 			channels: DEFAULT_CHANNELS,
 			frameSamples: DEFAULT_FRAME_SAMPLES,
-			defaultCrossfadeMs: DEFAULT_CROSSFADE_MS,
+			defaultCrossfadeDuration: DEFAULT_CROSSFADE_DURATION,
 		}
 
 		yield* validateConfig(config)
 
-		const commandQueue = yield* Queue.unbounded<Command>()
-		const pullScope = yield* Scope.make()
-		yield* Effect.addFinalizer(() => Scope.close(pullScope, Exit.void))
+		const commandQueue = yield* Queue.unbounded<internal.Command>()
+		const pullScope = yield* Scope.Scope
 
 		const stateRef = yield* Ref.make<MultiplexerState>({
 			nextClusterId: 1,
@@ -48,16 +52,16 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 
 		const setCluster = (
 			sources: ReadonlyArray<MultiplexerSourceInput>,
-			options?: { readonly crossfadeMs?: number },
+			options?: { readonly crossfadeDuration?: Duration.DurationInput },
 		): Effect.Effect<void, MultiplexerError> =>
 			Effect.gen(function* () {
 				yield* validateSourceInputs(sources, config)
 
 				const offered = yield* Queue.offer(
 					commandQueue,
-					Command.SetCluster({
+					internal.Command.SetCluster({
 						sources,
-						crossfadeMs: options?.crossfadeMs,
+						crossfadeDuration: options?.crossfadeDuration,
 					}),
 				)
 				if (!offered) {
@@ -71,7 +75,7 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 
 		const clearCluster = (): Effect.Effect<void, MultiplexerError> =>
 			Effect.gen(function* () {
-				const offered = yield* Queue.offer(commandQueue, Command.ClearCluster())
+				const offered = yield* Queue.offer(commandQueue, internal.Command.ClearCluster())
 				if (!offered) {
 					return yield* Effect.fail(
 						new MultiplexerCommandQueueError({
@@ -86,7 +90,10 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 				if (!Number.isFinite(volume) || volume < 0) {
 					return yield* Effect.fail(new MultiplexerInvalidMasterVolumeError({ volume }))
 				}
-				const offered = yield* Queue.offer(commandQueue, Command.SetMasterVolume({ volume }))
+				const offered = yield* Queue.offer(
+					commandQueue,
+					internal.Command.SetMasterVolume({ volume }),
+				)
 				if (!offered) {
 					return yield* Effect.fail(
 						new MultiplexerCommandQueueError({
@@ -109,10 +116,12 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 			let state = yield* Ref.get(stateRef)
 
 			for (const command of commands) {
-				state = yield* Command.$match(command, {
-					SetCluster: ({ crossfadeMs, sources }) =>
+				state = yield* internal.Command.$match(command, {
+					SetCluster: ({ crossfadeDuration, sources }) =>
 						Effect.gen(function* () {
-							const transitionMs = crossfadeMs ?? config.defaultCrossfadeMs
+							const transitionMs = Duration.toMillis(
+								crossfadeDuration ?? config.defaultCrossfadeDuration,
+							)
 							if (!Number.isFinite(transitionMs) || transitionMs < 0) {
 								return yield* Effect.fail(
 									new MultiplexerInvalidCrossfadeDurationError({
@@ -121,7 +130,12 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 								)
 							}
 
-							const newCluster = yield* createRuntimeCluster(state.nextClusterId, pullScope, config, sources)
+							const newCluster = yield* createRuntimeCluster(
+								state.nextClusterId,
+								pullScope,
+								config,
+								sources,
+							)
 							const totalFadeSamples = crossfadeSamples(config.sampleRate, transitionMs)
 							const nextState: MultiplexerState = {
 								...state,
@@ -188,17 +202,16 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 			return applyGain(frame, state.masterVolume)
 		})
 
-		const output = Stream.repeatEffect(nextFrame).pipe(
-			Stream.schedule(Schedule.spaced(Duration.millis(frameDurationMs))),
+		const output = Stream.repeatEffectWithSchedule(
+			nextFrame,
+			Schedule.spaced(Duration.millis(frameDurationMs)),
 		)
-
-		const asAudioSource = Effect.succeed(
-			new AudioSource.AudioSource({
-				sampleRate: config.sampleRate,
-				channels: config.channels,
-				stream: output,
-			}),
-		)
+		const audioSource = new AudioSource.AudioSource({
+			sampleRate: config.sampleRate,
+			channels: config.channels,
+			stream: output,
+		})
+		const asAudioSource = Effect.succeed(audioSource)
 
 		return {
 			config,

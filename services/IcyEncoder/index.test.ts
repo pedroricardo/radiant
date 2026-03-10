@@ -1,7 +1,7 @@
 import { describe, expect } from "bun:test"
 import { Chunk, Effect, Exit, Stream } from "effect"
-import { it } from "../bun-test-effect"
-import { AudioSource } from "../audio-source"
+import { it } from "../../bun-test-effect"
+import * as AudioSource from "../../lib/AudioSource"
 import { IcyEncoder } from "./index"
 
 const toBytes = (chunks: Chunk.Chunk<Uint8Array>): Uint8Array => {
@@ -105,17 +105,17 @@ describe("IcyEncoder", () => {
 	)
 
 	withEncoder.effect("fails when pcm frame length does not match channel count", () =>
-			Effect.gen(function* () {
-				const encoder = yield* IcyEncoder
-				const invalidFrame = new Float32Array([0.1, 0.2, 0.3])
-				const invalidSource = new AudioSource.AudioSource({
-					sampleRate: 44_100,
-					channels: 2,
-					stream: Stream.fromIterable([invalidFrame]),
-				})
-				const stream = yield* encoder.encode(invalidSource, {
-					kbps: 128,
-				})
+		Effect.gen(function* () {
+			const encoder = yield* IcyEncoder
+			const invalidFrame = new Float32Array([0.1, 0.2, 0.3])
+			const invalidSource = new AudioSource.AudioSource({
+				sampleRate: 44_100,
+				channels: 2,
+				stream: Stream.fromIterable([invalidFrame]),
+			})
+			const stream = yield* encoder.encode(invalidSource, {
+				kbps: 128,
+			})
 
 			const exit = yield* Effect.exit(Stream.runCollect(stream))
 			expect(Exit.isFailure(exit)).toBe(true)

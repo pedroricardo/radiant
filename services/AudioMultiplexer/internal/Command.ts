@@ -1,10 +1,10 @@
-import { Data } from "effect"
-import type { MultiplexerSourceInput } from "./types"
+import { Data, Duration } from "effect"
+import type { MultiplexerSourceInput } from "../types"
 
 export type Command = Data.TaggedEnum<{
 	SetCluster: {
 		readonly sources: ReadonlyArray<MultiplexerSourceInput>
-		readonly crossfadeMs?: number
+		readonly crossfadeDuration?: Duration.DurationInput
 	}
 	ClearCluster: {}
 	SetMasterVolume: {

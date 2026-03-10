@@ -1,6 +1,6 @@
-import { AudioSource } from "../audio-source"
 import { Chunk, Effect, Option, Scope, Stream } from "effect"
-import { averageFrames, applyGain, concatFloat32 } from "./audio"
+import * as AudioSource from "../../lib/AudioSource"
+import type { MultiplexerError } from "./Error"
 import {
 	MultiplexerInvalidConfigError,
 	MultiplexerInvalidSourceVolumeError,
@@ -8,23 +8,38 @@ import {
 	MultiplexerSourceFrameShapeError,
 	MultiplexerSourceInvalidSampleRateError,
 	MultiplexerSourcePullError,
-} from "./errors"
-import type { MultiplexerError } from "./errors"
-import type { AudioMultiplexerConfig, MultiplexerSourceInput, RuntimeCluster, RuntimeSource } from "./types"
+} from "./Error"
+import { applyGain, averageFrames, concatFloat32 } from "./internal/audio"
+import type {
+	AudioMultiplexerConfig,
+	MultiplexerSourceInput,
+	RuntimeCluster,
+	RuntimeSource,
+} from "./types"
 
 /**
  * Validates static engine configuration.
  */
-export const validateConfig = (config: AudioMultiplexerConfig): Effect.Effect<void, MultiplexerInvalidConfigError> =>
+export const validateConfig = (
+	config: AudioMultiplexerConfig,
+): Effect.Effect<void, MultiplexerInvalidConfigError> =>
 	Effect.gen(function* () {
 		if (!Number.isFinite(config.sampleRate) || config.sampleRate <= 0) {
-			return yield* Effect.fail(new MultiplexerInvalidConfigError({ message: `invalid sampleRate: ${config.sampleRate}` }))
+			return yield* Effect.fail(
+				new MultiplexerInvalidConfigError({ message: `invalid sampleRate: ${config.sampleRate}` }),
+			)
 		}
 		if (config.channels !== 1 && config.channels !== 2) {
-			return yield* Effect.fail(new MultiplexerInvalidConfigError({ message: `unsupported channels: ${config.channels}` }))
+			return yield* Effect.fail(
+				new MultiplexerInvalidConfigError({ message: `unsupported channels: ${config.channels}` }),
+			)
 		}
 		if (!Number.isInteger(config.frameSamples) || config.frameSamples <= 0) {
-			return yield* Effect.fail(new MultiplexerInvalidConfigError({ message: `invalid frameSamples: ${config.frameSamples}` }))
+			return yield* Effect.fail(
+				new MultiplexerInvalidConfigError({
+					message: `invalid frameSamples: ${config.frameSamples}`,
+				}),
+			)
 		}
 		if (!Number.isFinite(config.defaultCrossfadeMs) || config.defaultCrossfadeMs < 0) {
 			return yield* Effect.fail(
@@ -95,7 +110,9 @@ export const createRuntimeCluster = (
 			const { id, source } = sourceInput
 			const volume = sourceInput.volume ?? 1
 			const normalized =
-				source.sampleRate === config.sampleRate ? source : AudioSource.resampleTo(source, config.sampleRate)
+				source.sampleRate === config.sampleRate
+					? source
+					: AudioSource.resampleTo(source, config.sampleRate)
 			const pull = yield* Stream.toPull(normalized.stream).pipe(Scope.extend(pullScope))
 
 			runtimeSources.push({
