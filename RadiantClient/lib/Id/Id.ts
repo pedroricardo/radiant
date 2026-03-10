@@ -1,4 +1,3 @@
-import { varchar } from "drizzle-orm/pg-core"
 import { Schema } from "effect"
 export const DEFAULT_MAX_ID_SIZE = 12
 

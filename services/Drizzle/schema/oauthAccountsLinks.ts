@@ -1,0 +1,27 @@
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  uniqueIndex,
+	primaryKey
+} from "drizzle-orm/pg-core"
+
+import { users, userIdType } from "./user"
+
+export const oauthAccounts = pgTable(
+  "oauth_accounts",
+  {
+    userId: userIdType()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text().notNull(),
+    providerAccountId: text().notNull(),
+    createdAt: timestamp({ withTimezone: true })
+      .defaultNow()
+      .notNull()
+  },
+  (oauthAccounts) => [primaryKey({
+		 columns: [oauthAccounts.provider, oauthAccounts.providerAccountId],
+		 name: "provider_account_unique"
+	})]
+)

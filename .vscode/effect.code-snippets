@@ -1,4 +1,8 @@
 {
+	"Effect.fn": {
+		"prefix": "efffn",
+		"body": ["Effect.fn(function* ($1) {", "  $0", "})"],
+	},
 	"Effect.gen": {
 		"prefix": "eff",
 		"body": ["Effect.gen(function* () {", "  $0", "})"],
