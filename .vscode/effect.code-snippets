@@ -1,0 +1,151 @@
+{
+	"Effect.gen": {
+		"prefix": "eff",
+		"body": ["Effect.gen(function* () {", "  $0", "})"],
+	},
+
+	"Effect pipe": {
+		"prefix": "effpipe",
+		"body": ["pipe(", "  $1,", "  Effect.flatMap(($2) => $0)", ")"],
+	},
+
+	"forkScoped": {
+		"prefix": "forks",
+		"body": ["yield* Effect.forkScoped(", "  $0", ")"],
+	},
+
+	"Deferred request pattern": {
+		"prefix": "deffn",
+		"body": [
+			"Effect.gen(function* () {",
+			"  const reply = yield* Deferred.make<$1>()",
+			"",
+			"  yield* Queue.offer($2, {",
+			"    $3,",
+			"    reply",
+			"  })",
+			"",
+			"  return yield* Deferred.await(reply)",
+			"})",
+		],
+	},
+
+	"Actor daemon loop": {
+		"prefix": "actor",
+		"body": [
+			"const daemon = Effect.gen(function* () {",
+			"  while (true) {",
+			"    const msg = yield* Queue.take(queue)",
+			"",
+			"    switch (msg._tag) {",
+			"      case \"$1\": {",
+			"        $0",
+			"        break",
+			"      }",
+			"    }",
+			"  }",
+			"})",
+		],
+	},
+
+	"Effect Tag": {
+		"prefix": "tag",
+		"body": ["export class $1 extends Context.Tag(\"$1\")<$1, $2>() {}"],
+	},
+
+	"Effect Service": {
+		"prefix": "service",
+		"body": [
+			"export class $1 extends Effect.Service<$1>()(\"$1\", {",
+			"  accessors: true,",
+			"  effect: $2",
+			"}) {}",
+		],
+	},
+
+	"Effect Service Scoped": {
+		"prefix": "servicescoped",
+		"body": [
+			"export class $1 extends Effect.Service<$1>()(\"$1\", {",
+			"  accessors: true,",
+			"  scoped: $2",
+			"}) {}",
+		],
+	},
+	"Layer effect": {
+		"prefix": "layereffect",
+		"body": [
+			"export const $1 = Layer.effect(",
+			"  $2,",
+			"  Effect.gen(function* () {",
+			"    $0",
+			"  })",
+			")",
+		],
+	},
+
+	"Service actor": {
+		"prefix": "svcactor",
+		"body": [
+			"const queue = yield* Queue.unbounded<$1>()",
+			"",
+			"yield* Effect.forkScoped(",
+			"  Effect.gen(function* () {",
+			"    while (true) {",
+			"      const msg = yield* Queue.take(queue)",
+			"      $0",
+			"    }",
+			"  })",
+			")",
+		],
+	},
+
+	"Batch processor": {
+		"prefix": "batch",
+		"body": [
+			"yield* Effect.forkScoped(",
+			"  Queue.takeBetween(queue, 1, $1).pipe(",
+			"    Effect.flatMap((batch) => {",
+			"      $0",
+			"    }),",
+			"    Effect.forever",
+			"  )",
+			")",
+		],
+	},
+
+	"Scoped resource": {
+		"prefix": "scoped",
+		"body": ["Effect.acquireRelease(", "  $1,", "  ($2) => $0", ")"],
+	},
+
+	"Effect forever daemon": {
+		"prefix": "daemon",
+		"body": [
+			"yield* Effect.forkScoped(",
+			"  Effect.gen(function* () {",
+			"    $0",
+			"  }).pipe(",
+			"    Effect.forever",
+			"  )",
+			")",
+		],
+	},
+
+	"Queue service call": {
+		"prefix": "queuecall",
+		"body": [
+			"Effect.gen(function* () {",
+			"  const reply = yield* Deferred.make<$1>()",
+			"",
+			"  yield* Queue.offer(queue, {",
+			"    _tag: \"$2\",",
+			"    reply,",
+			"    $3",
+			"  })",
+			"",
+			"  return yield* Deferred.await(reply)",
+			"})",
+		],
+	},
+}
