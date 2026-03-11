@@ -2,7 +2,7 @@ import type { User } from "$lib";
 import { Drizzle } from "$services/Drizzle";
 import { users as usersTable } from "$services/Drizzle/schema/user";
 import { eq } from "drizzle-orm";
-import { Data, Effect } from "effect";
+import { Data, DateTime, Effect } from "effect";
 class UserRepositoryError extends Data.TaggedError("UserRepositoryError")<{cause: unknown, message: string}>{}
 export class UserRepository extends Effect.Service<UserRepository>()("UserRepository", {
 	accessors: true,
@@ -15,6 +15,24 @@ export class UserRepository extends Effect.Service<UserRepository>()("UserReposi
 					catch: (e) => new UserRepositoryError({cause: e, message: "failed to do select query in `users` table"})
 				});
 				return user.length > 0;
+			}),
+			createUser: Effect.fn(function* (user: Pick<typeof usersTable.$inferInsert, "username" | "email" | "avatarUrl">) {
+				const createdAt = yield* DateTime.nowAsDate;
+				const inserted = yield* Effect.tryPromise({
+					try: () =>
+						db
+							.insert(usersTable)
+							.values({
+								username: user.username,
+								email: user.email,
+								avatarUrl: user.avatarUrl,
+								createdAt,
+							})
+							.returning({ id: usersTable.id }),
+					catch: (e) => new UserRepositoryError({ cause: e, message: "failed to insert user" }),
+				});
+				const createdUser = inserted[0];
+				return createdUser.id;
 			})
 		}
 	})

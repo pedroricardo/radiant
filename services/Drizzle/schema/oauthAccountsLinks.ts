@@ -12,7 +12,7 @@ import { users, userIdType } from "./user"
 export const oauthAccounts = pgTable(
   "oauth_accounts",
   {
-    userId: userIdType()
+    userId: userIdType().notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     provider: text().notNull(),
     providerAccountId: text().notNull(),
