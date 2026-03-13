@@ -32,7 +32,7 @@ export class UserRepository extends Effect.Service<UserRepository>()("UserReposi
 					catch: (e) => new UserRepositoryError({ cause: e, message: "failed to insert user" }),
 				});
 				const createdUser = inserted[0];
-				return createdUser.id;
+				return createdUser?.id ?? (yield* Effect.dieMessage("Assertion failed: createdUser != null"));
 			})
 		}
 	})

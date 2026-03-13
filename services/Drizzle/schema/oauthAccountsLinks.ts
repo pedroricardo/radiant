@@ -21,7 +21,7 @@ export const oauthAccounts = pgTable(
       .notNull()
   },
   (oauthAccounts) => [primaryKey({
-		 columns: [oauthAccounts.provider, oauthAccounts.providerAccountId],
+		 columns: [oauthAccounts.provider, oauthAccounts.userId],
 		 name: "provider_account_unique"
-	})]
+	}),uniqueIndex("provider_account_id_unique_index").on(oauthAccounts.provider, oauthAccounts.userId)]
 )

@@ -1,4 +1,4 @@
-import { Chunk, Effect, Option, Scope, Stream } from "effect"
+import { Chunk, Duration, Effect, Option, Scope, Stream } from "effect"
 import * as AudioSource from "../../lib/AudioSource"
 import type { MultiplexerError } from "./Error"
 import {
@@ -41,10 +41,11 @@ export const validateConfig = (
 				}),
 			)
 		}
-		if (!Number.isFinite(config.defaultCrossfadeMs) || config.defaultCrossfadeMs < 0) {
+		const defaultCrossfadeMs = Duration.toMillis(config.defaultCrossfadeDuration)
+		if (!Number.isFinite(defaultCrossfadeMs) || defaultCrossfadeMs < 0) {
 			return yield* Effect.fail(
 				new MultiplexerInvalidConfigError({
-					message: `invalid defaultCrossfadeMs: ${config.defaultCrossfadeMs}`,
+					message: `invalid defaultCrossfadeDuration: ${config.defaultCrossfadeDuration}`,
 				}),
 			)
 		}
