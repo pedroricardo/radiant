@@ -2,7 +2,7 @@ import { Drizzle } from "$services"
 import { defineConfig } from "drizzle-kit"
 import { Effect, pipe } from "effect"
 
-export default await pipe(
+export default pipe(
 	Drizzle.Config.use((config) =>
 		defineConfig({
 			dialect: "postgresql",
@@ -13,5 +13,5 @@ export default await pipe(
 		}),
 	),
 	Effect.provide(Drizzle.Config.fromConfig),
-	Effect.runPromise,
+	Effect.runSync,
 )
