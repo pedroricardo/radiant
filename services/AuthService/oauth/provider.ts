@@ -27,6 +27,9 @@ const makeRegistry = Effect.gen(function* () {
 	const providers = yield* Ref.make(new Map<string, OAuthProvider>())
 	return {
 		addProvider: Effect.fn(function* (provider: OAuthProvider) {
+			yield* Effect.logInfo("oauth.registry.addProvider").pipe(
+				Effect.annotateLogs({ provider: provider.name }),
+			)
 			const providersMap = yield* providers.get
 			const oldProvider = providersMap.get(provider.name)
 			const rollback = () =>
@@ -37,10 +40,13 @@ const makeRegistry = Effect.gen(function* () {
 							: map.set(provider.name, provider),
 					),
 				)
-			let insertProvider = providers.pipe(Ref.update((map) => map.set(provider.name, provider)))
+			const insertProvider = providers.pipe(Ref.update((map) => map.set(provider.name, provider)))
 			yield* Effect.acquireRelease(insertProvider, rollback)
 		}),
 		getProvider: Effect.fn(function* (providerName: string) {
+			yield* Effect.logDebug("oauth.registry.getProvider").pipe(
+				Effect.annotateLogs({ provider: providerName }),
+			)
 			const providersMap = yield* providers.get
 			const provider = providersMap.get(providerName)
 			if (provider == null) {

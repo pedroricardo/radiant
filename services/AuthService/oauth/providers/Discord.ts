@@ -30,6 +30,7 @@ type DiscordUser = typeof DiscordUserSchema.Type
 
 const fetchDiscordUser = (accessToken: string) =>
 	Effect.gen(function* () {
+		yield* Effect.logDebug("oauth.discord.fetchUser")
 		const res = yield* Effect.tryPromise({
 			try: () =>
 				fetch("https://discord.com/api/users/@me", {
@@ -39,6 +40,9 @@ const fetchDiscordUser = (accessToken: string) =>
 				new OAuthValidationError({ message: "failed to call discord /users/@me", cause }),
 		})
 		if (!res.ok) {
+			yield* Effect.logWarning("oauth.discord.fetchUser_failed").pipe(
+				Effect.annotateLogs({ status: res.status }),
+			)
 			return yield* new OAuthValidationError({
 				message: `discord /users/@me failed: ${res.status}`,
 				cause: { status: res.status },
@@ -61,7 +65,7 @@ const fetchDiscordUser = (accessToken: string) =>
 					}),
 			),
 		)
-	})
+	}).pipe(Effect.withSpan("OAuth.Discord.fetchUser"))
 
 const discordAvatarUrl = (id: string, avatar: string | null) => {
 	if (avatar) return new URL(`https://cdn.discordapp.com/avatars/${id}/${avatar}.png`)
@@ -81,6 +85,7 @@ export const makeDiscordProvider = (
 			),
 		exchangeCodeAndGetUserInfo: (code: string) =>
 			Effect.gen(function* () {
+				yield* Effect.logInfo("oauth.discord.exchangeCodeAndGetUserInfo")
 				const tokens = yield* Effect.tryPromise({
 					try: () => discord.validateAuthorizationCode(code, null),
 					catch: (cause) =>
@@ -107,7 +112,10 @@ export const makeDiscordProvider = (
 					avatarUrl: discordAvatarUrl(user.id, user.avatar),
 					providerName: "discord",
 				})
-			}),
+			}).pipe(
+				Effect.annotateLogs({ provider: "discord" }),
+				Effect.withSpan("OAuth.Discord.exchangeCodeAndGetUserInfo"),
+			),
 	}
 }
 

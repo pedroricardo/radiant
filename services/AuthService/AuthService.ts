@@ -19,49 +19,99 @@ export class OAuthAccountNeedsRegisterException extends Data.TaggedError("OAuthA
 export class AuthService extends Effect.Service<AuthService>()("AuthService", {
 	accessors: true,
 	effect: Effect.gen(function* () {
-		let providers = yield* OAuthProvidersRegistry
-    let accountLinks = yield* AccountLinkService.AccountLinkService;
-		const userRepo = yield* UserRepository.UserRepository;
+		const providers = yield* OAuthProvidersRegistry
+		const accountLinks = yield* AccountLinkService.AccountLinkService
+		const userRepo = yield* UserRepository.UserRepository
 		return {
 			listAvailableOAuthProviders: providers.listAvailableProviders,
-			finishOAuthLoginAndGetUserId: Effect.fn(function* (providerName: string, code: string) {
-				const provider = yield* providers.getProvider(providerName);
-				const userId = yield* pipe(
-					code,
-					provider.exchangeCodeAndGetUserInfo,
-					Effect.andThen(accountLinks.getUserByExternalAccount),
-					Effect.andThen(Either.mapLeft((userInfo) => new OAuthAccountNeedsRegisterException({userInfo})))
-				)
+			finishOAuthLoginAndGetUserId: (providerName: string, code: string) =>
+				Effect.gen(function* () {
+					yield* Effect.logInfo("oauth.finishOAuthLoginAndGetUserId")
 
-				return userId
-			}),
-			registerOAuthUser: Effect.fn(function* (userInfo: OAuthUserInfo) {
-				const userId = yield* userRepo.createUser({
-					username: userInfo.username,
-					email: userInfo.email,
-					avatarUrl: userInfo.avatarUrl.toString(),
-				})
-				yield* accountLinks.linkAccount(userId, userInfo)
-				return userId
-			}),
+					const provider = yield* providers.getProvider(providerName)
+
+					const oauthUserInfo = yield* provider.exchangeCodeAndGetUserInfo(code).pipe(
+						Effect.tapError((e) =>
+							Effect.logWarning("oauth.exchangeCodeAndGetUserInfo_failed").pipe(
+								Effect.annotateLogs({ provider: providerName, errorTag: (e as any)?._tag }),
+							),
+						),
+					)
+
+					const lookup = yield* accountLinks.getUserByExternalAccount(oauthUserInfo)
+					if (lookup._tag === "Right") {
+						yield* Effect.logDebug("oauth.account_link_found")
+						return lookup.right
+					}
+
+					yield* Effect.logDebug("oauth.account_needs_register")
+					return yield* new OAuthAccountNeedsRegisterException({ userInfo: lookup.left })
+				}).pipe(
+					Effect.annotateLogs({ provider: providerName }),
+					Effect.withSpan("AuthService.finishOAuthLoginAndGetUserId", {
+						attributes: { provider: providerName },
+					}),
+				),
+			registerOAuthUser: (userInfo: OAuthUserInfo) =>
+				Effect.gen(function* () {
+					yield* Effect.logInfo("oauth.registerOAuthUser")
+
+					const userId = yield* userRepo.createUser({
+						username: userInfo.username,
+						email: userInfo.email,
+						avatarUrl: userInfo.avatarUrl.toString(),
+					})
+
+					yield* accountLinks.linkAccount(userId, userInfo)
+
+					yield* Effect.logInfo("oauth.registerOAuthUser_success").pipe(
+						Effect.annotateLogs({ userId }),
+					)
+
+					return userId
+				}).pipe(
+					Effect.annotateLogs({ provider: userInfo.providerName }),
+					Effect.withSpan("AuthService.registerOAuthUser", {
+						attributes: { provider: userInfo.providerName },
+					}),
+				),
 		}
 	}),
 }) {}
 
 export const getOrCreateUserFromOAuthCode = (providerName: string, code: string) =>
 	Effect.gen(function* () {
-		const auth = yield* AuthService;
+		const auth = yield* AuthService
 		return yield* auth.finishOAuthLoginAndGetUserId(providerName, code).pipe(
-			Effect.catchTag("OAuthAccountNeedsRegisterException", (error) =>
-				auth.registerOAuthUser(error.userInfo),
+			Effect.catchTag("OAuthAccountNeedsRegisterException", (error) => {
+				return auth.registerOAuthUser(error.userInfo)
+			}),
+			Effect.tapError((e) =>
+				Effect.logWarning("oauth.getOrCreateUserFromOAuthCode_failed").pipe(
+					Effect.annotateLogs({ provider: providerName, errorTag: (e as any)?._tag }),
+				),
 			),
-		);
-	});
+		)
+	}).pipe(
+		Effect.annotateLogs({ provider: providerName }),
+		Effect.withSpan("AuthService.getOrCreateUserFromOAuthCode", {
+			attributes: { provider: providerName },
+		}),
+	)
 
 export const loginOAuth = (providerName: string, code: string) =>
 	Effect.gen(function* () {
-		const sessionService = yield* SessionService.SessionService;
-		const userId = yield* getOrCreateUserFromOAuthCode(providerName, code);
-		const sessionId = yield* sessionService.createSessionForUser(userId);
-		return { sessionId, userId };
-	});
+		yield* Effect.logInfo("oauth.loginOAuth")
+
+		const sessionService = yield* SessionService.SessionService
+		const userId = yield* getOrCreateUserFromOAuthCode(providerName, code)
+		const sessionId = yield* sessionService.createSessionForUser(userId)
+
+		// Note: sessionId is a bearer token; do not log it.
+		yield* Effect.logInfo("oauth.loginOAuth_success").pipe(Effect.annotateLogs({ userId }))
+
+		return { sessionId, userId }
+	}).pipe(
+		Effect.annotateLogs({ provider: providerName }),
+		Effect.withSpan("AuthService.loginOAuth", { attributes: { provider: providerName } }),
+	)

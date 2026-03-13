@@ -12,9 +12,14 @@ export const authGroupLive = HttpApiBuilder.group(
 	"auth",
 	(handlers) =>
 		handlers
-			.handle("listOAuthProviders", () => AuthService.listAvailableOAuthProviders)
+			.handle("listOAuthProviders", () =>
+				AuthService.listAvailableOAuthProviders.pipe(
+					Effect.withSpan("http.auth.listOAuthProviders", { kind: "server" }),
+				),
+			)
 			.handle("getOAuthAuthorizationUrl", ({ path: { provider } }) =>
 				Effect.gen(function* () {
+					yield* Effect.logInfo("http.auth.getOAuthAuthorizationUrl")
 					const stateChecker = yield* OAuthStateChecker
 					const registry = yield* OAuth.OAuthProvidersRegistry
 					const p = yield* registry.getProvider(provider).pipe(
@@ -35,10 +40,17 @@ export const authGroupLive = HttpApiBuilder.group(
 						),
 					)
 					return yield* p.createAuthorizationUrl(state)
-				}),
+				}).pipe(
+					Effect.annotateLogs({ provider }),
+					Effect.withSpan("http.auth.getOAuthAuthorizationUrl", {
+						kind: "server",
+						attributes: { provider },
+					}),
+				),
 			)
 			.handle("oauthCallback", ({ path: { provider }, urlParams: { code, state } }) =>
 				Effect.gen(function* () {
+					yield* Effect.logInfo("http.auth.oauthCallback")
 					const stateChecker = yield* OAuthStateChecker
 					yield* stateChecker
 						.consumeState(provider, state)
@@ -47,11 +59,11 @@ export const authGroupLive = HttpApiBuilder.group(
 								new RadiantClient.ApiContract.OAuthInvalidState(),
 							),
 							Effect.catchTag("OAuthStateConsumeError", (e) =>
-								new RadiantClient.ApiContract.OAuthLoginFailed({
-									message: String(e),
-								}),
-							),
+								Effect.logError(e).pipe(Effect.andThen(() => new RadiantClient.ApiContract.OAuthLoginFailed({
+									message: String(e)
+								}))),
 						)
+					)
 					return yield* loginOAuth(provider, code).pipe(
 						Effect.catchTag("OAuthProviderUnknownError", (e) =>
 							new RadiantClient.ApiContract.OAuthProviderNotFound({
@@ -66,13 +78,20 @@ export const authGroupLive = HttpApiBuilder.group(
 								}),
 						),
 					)
-				}),
+				}).pipe(
+					Effect.annotateLogs({ provider }),
+					Effect.withSpan("http.auth.oauthCallback", {
+						kind: "server",
+						attributes: { provider },
+					}),
+				),
 			)
 			.handle("me", () =>
 				Effect.gen(function* () {
+					yield* Effect.logDebug("http.auth.me")
 					const userId = yield* RadiantClient.ApiContract.CurrentUser
 					return { userId }
-				}),
+				}).pipe(Effect.withSpan("http.auth.me", { kind: "server" })),
 			),
 )
 
@@ -85,13 +104,18 @@ export const AuthorizationLive = Layer.effect(
 				Effect.gen(function* () {
 					const raw = Redacted.value(bearerToken)
 					const sessionId = yield* Schema.decodeUnknown(Session.SessionId)(raw).pipe(
+						Effect.tapError(() => Effect.logDebug("auth.bearer.invalid_token")),
 						Effect.mapError(() => new RadiantClient.ApiContract.Unauthorized()),
 					)
 					const userId = yield* sessionService.getSessionUser(sessionId).pipe(
+						Effect.tapError(() => Effect.logDebug("auth.bearer.session_not_found")),
 						Effect.mapError(() => new RadiantClient.ApiContract.Unauthorized()),
 					)
 					return userId
-				}),
+				}).pipe(
+					Effect.annotateLogs({ tokenLength: Redacted.value(bearerToken).length }),
+					Effect.withSpan("http.auth.bearer", { kind: "server" }),
+				),
 		}
 	}),
 )

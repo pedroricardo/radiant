@@ -41,6 +41,7 @@ const fetchGitHubJson = <A, I>(
 	schema: Schema.Schema<A, I, never>,
 ) =>
 	Effect.gen(function* () {
+		yield* Effect.logDebug("oauth.github.fetchJson").pipe(Effect.annotateLogs({ url }))
 		const res = yield* Effect.tryPromise({
 			try: () =>
 				fetch(url, {
@@ -53,6 +54,9 @@ const fetchGitHubJson = <A, I>(
 			catch: (cause) => new OAuthValidationError({ message, cause }),
 		})
 		if (!res.ok) {
+			yield* Effect.logWarning("oauth.github.fetchJson_failed").pipe(
+				Effect.annotateLogs({ url, status: res.status }),
+			)
 			return yield* new OAuthValidationError({
 				message: `github request failed: ${url} (${res.status})`,
 				cause: { status: res.status },
@@ -72,7 +76,7 @@ const fetchGitHubJson = <A, I>(
 					}),
 			),
 		)
-	})
+	}).pipe(Effect.withSpan("OAuth.GitHub.fetchJson", { attributes: { url } }))
 
 const pickBestEmail = (emails: ReadonlyArray<GitHubEmail>): string | null => {
 	const primaryVerified = emails.find((e) => e.primary && e.verified)
@@ -91,6 +95,7 @@ export const makeGitHubProvider = (config: typeof GitHubOAuthConfig.Service): OA
 			),
 		exchangeCodeAndGetUserInfo: (code: string) =>
 			Effect.gen(function* () {
+				yield* Effect.logInfo("oauth.github.exchangeCodeAndGetUserInfo")
 				const tokens = yield* Effect.tryPromise({
 					try: () => github.validateAuthorizationCode(code),
 					catch: (cause) =>
@@ -133,7 +138,10 @@ export const makeGitHubProvider = (config: typeof GitHubOAuthConfig.Service): OA
 					avatarUrl: new URL(user.avatar_url),
 					providerName: "github",
 				})
-			}),
+			}).pipe(
+				Effect.annotateLogs({ provider: "github" }),
+				Effect.withSpan("OAuth.GitHub.exchangeCodeAndGetUserInfo"),
+			),
 	}
 }
 

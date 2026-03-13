@@ -7,10 +7,17 @@ export const usersGroupLive = HttpApiBuilder.group(
 	"users",
 	(handlers) =>
 		handlers.handle("getUser", ({ path: { id } }) =>
-			Effect.succeed({
-				id,
-				name: "John Doe",
-				createdAt: DateTime.unsafeNow(),
-			}),
+			Effect.logDebug("http.users.getUser")
+				.pipe(
+					Effect.annotateLogs({ id }),
+					Effect.andThen(
+						Effect.succeed({
+							id,
+							name: "John Doe",
+							createdAt: DateTime.unsafeNow(),
+						}),
+					),
+					Effect.withSpan("http.users.getUser", { kind: "server", attributes: { id } }),
+				),
 		),
 )
