@@ -75,11 +75,10 @@ export const makeDiscordProvider = (
 	const discord = new arctic.Discord(config.clientId, config.clientSecret, config.redirectUri)
 	return {
 		name: "discord",
-		authUrl: Effect.sync(() =>
-			discord
-				.createAuthorizationURL(arctic.generateState(), null, ["identify", "email"])
-				.toString(),
-		),
+		createAuthorizationUrl: (state: string) =>
+			Effect.sync(() =>
+				discord.createAuthorizationURL(state, null, ["identify", "email"]).toString(),
+			),
 		exchangeCodeAndGetUserInfo: (code: string) =>
 			Effect.gen(function* () {
 				const tokens = yield* Effect.tryPromise({

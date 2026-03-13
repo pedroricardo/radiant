@@ -19,12 +19,4 @@ const RadiantApiLiveHttpServer = HttpApiBuilder.serve(HttpMiddleware.logger).pip
 	Layer.provide(BunHttpServer.layer({ port: 3000 })),
 )
 
-Layer.launch(RadiantApiLiveHttpServer.pipe(Layer.provide(ProductionLayer))).pipe(BunRuntime.runMain)
-/*
-Example Output:
-User {
-  id: 1,
-  name: 'John Doe',
-  createdAt: DateTime.Utc(2025-01-04T15:14:49.562Z)
-}
-*/
+BunRuntime.runMain(Layer.launch(RadiantApiLiveHttpServer.pipe(Layer.provide(ProductionLayer))))

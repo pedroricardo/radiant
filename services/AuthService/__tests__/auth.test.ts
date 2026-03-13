@@ -13,6 +13,7 @@ import * as SessionService from "$services/SessionService";
 import { Drizzle } from "$services/Drizzle";
 import { users } from "$services/Drizzle/schema/user";
 import { oauthAccounts } from "$services/Drizzle/schema/oauthAccountsLinks";
+import { oauthStates } from "$services/Drizzle/schema/oauthStates";
 import { sessions } from "$services/Drizzle/schema/session";
 import { eq } from "drizzle-orm";
 
@@ -26,7 +27,7 @@ const userInfo = new OAuthUserInfo({
 
 const makeProvider = (info: OAuthUserInfo): OAuthProvider => ({
 	name: info.providerName,
-	authUrl: Effect.succeed("https://auth.example.com"),
+	createAuthorizationUrl: (_state) => Effect.succeed("https://auth.example.com"),
 	exchangeCodeAndGetUserInfo: () => Effect.succeed(info),
 });
 
@@ -44,6 +45,7 @@ const providerLayer = Layer.scopedDiscard(
 		yield* registry.addProvider(makeProvider(userInfo));
 	}),
 ).pipe(Layer.provideMerge(oauthLayer));
+const oauthStateLayer = OAuth.layerDrizzle.pipe(Layer.provideMerge(dbLayer));
 const authLayer = AuthService.Default.pipe(
 	Layer.provideMerge(oauthLayer),
 	Layer.provideMerge(accountLinkLayer),
@@ -57,6 +59,7 @@ const baseLayer = Layer.mergeAll(
 	accountLinkLayer,
 	oauthLayer,
 	providerLayer,
+	oauthStateLayer,
 	authLayer,
 );
 
@@ -146,6 +149,62 @@ it.layer(baseLayer)(({ scoped }) => {
 			const db = yield* Drizzle;
 			const sessionRows = yield* Effect.promise(() => db.select().from(sessions));
 			expect(sessionRows).toHaveLength(2);
+		}),
+	);
+
+	scoped("OAuthStateChecker.issueState stores createdAt from TestClock", () =>
+		Effect.gen(function* () {
+			yield* resetDb;
+			const fixed = new Date("2024-04-04T00:00:00Z");
+			yield* TestClock.setTime(fixed);
+
+			const checker = yield* OAuth.OAuthStateChecker;
+			const state = yield* checker.issueState("test");
+
+			const db = yield* Drizzle;
+			const rows = yield* Effect.promise(() =>
+				db
+					.select()
+					.from(oauthStates)
+					.where(eq(oauthStates.state, state)),
+			);
+
+			expect(rows).toHaveLength(1);
+			const row = rows[0]!;
+			expect(row.provider).toBe("test");
+			expect(row.state).toBe(state);
+			expect(row.consumedAt).toBeNull();
+			expect(new Date(row.createdAt).toISOString()).toBe(fixed.toISOString());
+		}),
+	);
+
+	scoped("OAuthStateChecker.consumeState consumes once and rejects reuse", () =>
+		Effect.gen(function* () {
+			yield* resetDb;
+			const issueAt = new Date("2024-05-05T00:00:00Z");
+			yield* TestClock.setTime(issueAt);
+
+			const checker = yield* OAuth.OAuthStateChecker;
+			const state = yield* checker.issueState("test");
+
+			const consumeAt = new Date("2024-05-05T01:02:03Z");
+			yield* TestClock.setTime(consumeAt);
+			yield* checker.consumeState("test", state);
+
+			const db = yield* Drizzle;
+			const rows = yield* Effect.promise(() =>
+				db
+					.select()
+					.from(oauthStates)
+					.where(eq(oauthStates.state, state)),
+			);
+			expect(rows).toHaveLength(1);
+			const row = rows[0]!;
+			expect(new Date(row.createdAt).toISOString()).toBe(issueAt.toISOString());
+			expect(new Date(row.consumedAt!).toISOString()).toBe(consumeAt.toISOString());
+
+			const err = yield* checker.consumeState("test", state).pipe(Effect.flip);
+			expect(err._tag).toBe("OAuthStateInvalidError");
 		}),
 	);
 });

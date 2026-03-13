@@ -7,18 +7,13 @@ import {
 	HttpApiSecurity,
 } from "@effect/platform"
 import { Context, Schema } from "effect"
-import { Session, User as UserDomain } from "./lib"
+import { Session, User, User as UserDomain } from "./lib"
 
-const User = Schema.Struct({
-	id: Schema.Number,
-	name: Schema.String,
-	createdAt: Schema.DateTimeUtc,
-})
 
 const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
 
 const usersGroup = HttpApiGroup.make("users").add(
-	HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User),
+	HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User.User),
 )
 
 export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
@@ -50,10 +45,23 @@ export class OAuthLoginFailed extends Schema.TaggedError<OAuthLoginFailed>()(
 	HttpApiSchema.annotations({ status: 400 }),
 ) {}
 
+export class OAuthAuthorizationUrlFailed extends Schema.TaggedError<OAuthAuthorizationUrlFailed>()(
+	"OAuthAuthorizationUrlFailed",
+	{ message: Schema.String },
+	HttpApiSchema.annotations({ status: 500 }),
+) {}
+
+export class OAuthInvalidState extends Schema.TaggedError<OAuthInvalidState>()(
+	"OAuthInvalidState",
+	{},
+	HttpApiSchema.annotations({ status: 400 }),
+) {}
+
 const ProviderParam = HttpApiSchema.param("provider", Schema.String)
 
 const OAuthCallbackUrlParams = Schema.Struct({
 	code: Schema.String,
+	state: Schema.String,
 })
 
 const OAuthLoginResponse = Schema.Struct({
@@ -74,14 +82,17 @@ const authGroup = HttpApiGroup.make("auth")
 	.add(
 		HttpApiEndpoint.get("getOAuthAuthorizationUrl")`/auth/oauth/${ProviderParam}/url`.addSuccess(
 			Schema.String,
-		).addError(OAuthProviderNotFound),
+		)
+			.addError(OAuthProviderNotFound)
+			.addError(OAuthAuthorizationUrlFailed),
 	)
 	.add(
 		HttpApiEndpoint.get("oauthCallback")`/auth/oauth/${ProviderParam}/callback`
 			.setUrlParams(OAuthCallbackUrlParams)
 			.addSuccess(OAuthLoginResponse)
 			.addError(OAuthProviderNotFound)
-			.addError(OAuthLoginFailed),
+			.addError(OAuthLoginFailed)
+			.addError(OAuthInvalidState),
 	)
 	.add(
 		HttpApiEndpoint.get("me")`/me`

@@ -8,7 +8,7 @@ export class OAuthValidationError extends Data.TaggedError("OAuthValidationError
 
 export interface OAuthProvider {
 	readonly name: string
-	readonly authUrl: Effect.Effect<string, never, never>
+	createAuthorizationUrl(state: string): Effect.Effect<string, never, never>
 	exchangeCodeAndGetUserInfo(
 		code: string,
 	): Effect.Effect<OAuthUserInfo, OAuthValidationError, never>

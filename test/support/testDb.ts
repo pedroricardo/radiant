@@ -97,14 +97,14 @@ const sqlLayer = Layer.scoped(
 			return { sql, container, bootstrapDBConnection, randomDatabaseName };
 		}),
 		({ sql, container, bootstrapDBConnection, randomDatabaseName }) =>
-			Effect.promise(async () => {
+			Effect.tryPromise(async () => {
 				try {
-					await bootstrapDBConnection`DROP DATABASE ${Bun.sql(randomDatabaseName)}`;
+					await sql.close();
+					await bootstrapDBConnection`DROP DATABASE ${sql(randomDatabaseName)}`;
 				} finally {
-					await Promise.all([sql.close(), bootstrapDBConnection.close()]);
-					await container.stop();
+					await bootstrapDBConnection.close();
 				}
-			}),
+			}).pipe(Effect.ignoreLogged),
 	).pipe(Effect.map(({ sql, randomDatabaseName }) => sql)),
 );
 

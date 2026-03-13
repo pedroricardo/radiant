@@ -85,9 +85,10 @@ export const makeGitHubProvider = (config: typeof GitHubOAuthConfig.Service): OA
 	const github = new arctic.GitHub(config.clientId, config.clientSecret, config.redirectUri)
 	return {
 		name: "github",
-		authUrl: Effect.sync(() =>
-			github.createAuthorizationURL(arctic.generateState(), ["read:user", "user:email"]).toString(),
-		),
+		createAuthorizationUrl: (state: string) =>
+			Effect.sync(() =>
+				github.createAuthorizationURL(state, ["read:user", "user:email"]).toString(),
+			),
 		exchangeCodeAndGetUserInfo: (code: string) =>
 			Effect.gen(function* () {
 				const tokens = yield* Effect.tryPromise({

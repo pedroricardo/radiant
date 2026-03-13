@@ -5,6 +5,7 @@ import * as SessionService from "$services/SessionService"
 import { AuthService } from "$services/AuthService/AuthService"
 import * as OAuth from "$services/AuthService/oauth"
 import * as AccountLinkService from "$services/AuthService/oauth/AccountLinkService"
+import { layerDrizzle as oauthStateCheckerLayer } from "$services/AuthService/oauth"
 
 const drizzleConfigLayer = Drizzle.Config.fromConfig
 const dbLayer = Drizzle.layer.pipe(Layer.provideMerge(drizzleConfigLayer))
@@ -30,6 +31,8 @@ const authServiceLayer = AuthService.Default.pipe(
 	Layer.provideMerge(userRepoLayer),
 )
 
+const oauthStateLayer = oauthStateCheckerLayer.pipe(Layer.provideMerge(dbLayer))
+
 export const ProductionLayer = Layer.mergeAll(
 	drizzleConfigLayer,
 	dbLayer,
@@ -38,7 +41,7 @@ export const ProductionLayer = Layer.mergeAll(
 	oauthRegistryLayer,
 	discordProviderLayer,
 	githubProviderLayer,
+	oauthStateLayer,
 	accountLinkLayer,
 	authServiceLayer,
 )
-
