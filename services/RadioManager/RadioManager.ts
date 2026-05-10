@@ -1,4 +1,5 @@
 import type { Radio } from "$lib"
+import { IcyEncoder } from "$services"
 import { Cache, Duration, Effect } from "effect"
 import { RadioManagerConfig } from "./RadioManagerConfig"
 import * as RadioStream from "./RadioStream"
@@ -11,11 +12,18 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 			lookup: RadioStream.startRadio,
 			timeToLive: Duration.infinity,
 		})
+		const encoder = yield* IcyEncoder.IcyEncoder
 
-		const getStream = Effect.fn(function* (radioId: Radio.RadioId) {
-			const radioStream = yield* radiosCache.get(radioId)
-			return yield* RadioStream.cloneStream(radioStream)
-		})
+		const getStream = Effect.fn(
+			function* (radioId: Radio.RadioId) {
+				const radioStream = yield* radiosCache.get(radioId)
+				return yield* RadioStream.cloneStream(radioStream, {
+					kbps: 128,
+					title: "Radiant Stream",
+				})
+			},
+			Effect.provideService(IcyEncoder.IcyEncoder, encoder),
+		)
 		// TODOs
 		return {
 			getStream,

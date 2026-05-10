@@ -1,7 +1,7 @@
-import { Data, Effect, Either, Option, pipe } from "effect"
-import { AccountLinkService, OAuthProvidersRegistry, OAuthUserInfo } from "./oauth"
-import * as UserRepository from "$services/UserRepository"
 import * as SessionService from "$services/SessionService"
+import * as UserRepository from "$services/UserRepository"
+import { Data, Effect } from "effect"
+import { AccountLinkService, OAuthProvidersRegistry, OAuthUserInfo } from "./oauth"
 
 export class OAuthProviderUnknown extends Data.TaggedError("OAuthProviderUnknown")<{
 	availableProviders: string[]
@@ -12,9 +12,11 @@ export class OAuthProviderUnknown extends Data.TaggedError("OAuthProviderUnknown
 	}
 }
 
-export class OAuthAccountNeedsRegisterException extends Data.TaggedError("OAuthAccountNeedsRegisterException")<{
+export class OAuthAccountNeedsRegisterException extends Data.TaggedError(
+	"OAuthAccountNeedsRegisterException",
+)<{
 	userInfo: OAuthUserInfo
-}>{}
+}> {}
 
 export class AuthService extends Effect.Service<AuthService>()("AuthService", {
 	accessors: true,
@@ -30,13 +32,15 @@ export class AuthService extends Effect.Service<AuthService>()("AuthService", {
 
 					const provider = yield* providers.getProvider(providerName)
 
-					const oauthUserInfo = yield* provider.exchangeCodeAndGetUserInfo(code).pipe(
-						Effect.tapError((e) =>
-							Effect.logWarning("oauth.exchangeCodeAndGetUserInfo_failed").pipe(
-								Effect.annotateLogs({ provider: providerName, errorTag: (e as any)?._tag }),
+					const oauthUserInfo = yield* provider
+						.exchangeCodeAndGetUserInfo(code)
+						.pipe(
+							Effect.tapError((e) =>
+								Effect.logWarning("oauth.exchangeCodeAndGetUserInfo_failed").pipe(
+									Effect.annotateLogs({ provider: providerName, errorTag: (e as any)?._tag }),
+								),
 							),
-						),
-					)
+						)
 
 					const lookup = yield* accountLinks.getUserByExternalAccount(oauthUserInfo)
 					if (lookup._tag === "Right") {

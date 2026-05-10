@@ -1,5 +1,5 @@
+export * as AccountLinkService from "./AccountLinkService"
+export * from "./OAuthStateChecker"
 export * from "./OAuthUserInfo"
 export * from "./provider"
-export * as AccountLinkService from "./AccountLinkService"
 export * as Providers from "./providers"
-export * from "./OAuthStateChecker"

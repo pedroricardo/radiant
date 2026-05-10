@@ -1,2 +1,2 @@
-export * from "./errors"
 export * from "./AccountLinkService"
+export * from "./errors"

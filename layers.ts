@@ -1,14 +1,16 @@
-import { Layer } from "effect"
-import * as Drizzle from "$services/Drizzle"
-import * as UserRepository from "$services/UserRepository"
-import * as SessionService from "$services/SessionService"
+import { IcyEncoder, RadioManager } from "$services"
 import { AuthService } from "$services/AuthService/AuthService"
 import * as OAuth from "$services/AuthService/oauth"
-import * as AccountLinkService from "$services/AuthService/oauth/AccountLinkService"
 import { layerDrizzle as oauthStateCheckerLayer } from "$services/AuthService/oauth"
+import * as AccountLinkService from "$services/AuthService/oauth/AccountLinkService"
+import * as SessionService from "$services/SessionService"
+import * as UserRepository from "$services/UserRepository"
+import { Layer } from "effect"
+import { TestDbLayer } from "./test/support/testDb"
 
-const drizzleConfigLayer = Drizzle.Config.fromConfig
-const dbLayer = Drizzle.layer.pipe(Layer.provideMerge(drizzleConfigLayer))
+//const drizzleConfigLayer = Drizzle.Config.fromConfig
+//const dbLayer = Drizzle.layer.pipe(Layer.provide(drizzleConfigLayer));
+const dbLayer = TestDbLayer
 
 const userRepoLayer = UserRepository.UserRepository.Default.pipe(Layer.provideMerge(dbLayer))
 const sessionLayer = SessionService.SessionService.Default.pipe(Layer.provideMerge(dbLayer))
@@ -33,8 +35,9 @@ const authServiceLayer = AuthService.Default.pipe(
 
 const oauthStateLayer = oauthStateCheckerLayer.pipe(Layer.provideMerge(dbLayer))
 
+const radioManagerLayer = RadioManager.layer.pipe(Layer.provideMerge(IcyEncoder.layer))
+
 export const ProductionLayer = Layer.mergeAll(
-	drizzleConfigLayer,
 	dbLayer,
 	userRepoLayer,
 	sessionLayer,
@@ -44,4 +47,5 @@ export const ProductionLayer = Layer.mergeAll(
 	oauthStateLayer,
 	accountLinkLayer,
 	authServiceLayer,
+	radioManagerLayer,
 )

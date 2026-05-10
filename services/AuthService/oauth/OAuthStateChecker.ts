@@ -1,9 +1,8 @@
-import * as arctic from "arctic"
-import { Context, DateTime, Effect, Layer } from "effect"
 import { Drizzle } from "$services/Drizzle"
 import { oauthStates } from "$services/Drizzle/schema/oauthStates"
+import * as arctic from "arctic"
 import { and, eq, isNull } from "drizzle-orm"
-import { Data } from "effect"
+import { Context, Data, DateTime, Effect, Layer } from "effect"
 
 export class OAuthStateIssueError extends Data.TaggedError("OAuthStateIssueError")<{
 	message: string
@@ -24,7 +23,10 @@ export class OAuthStateConsumeError extends Data.TaggedError("OAuthStateConsumeE
 
 interface OAuthStateCheckerApi {
 	issueState(provider: string): Effect.Effect<string, OAuthStateIssueError>
-	consumeState(provider: string, state: string): Effect.Effect<void, OAuthStateInvalidError | OAuthStateConsumeError>
+	consumeState(
+		provider: string,
+		state: string,
+	): Effect.Effect<void, OAuthStateInvalidError | OAuthStateConsumeError>
 }
 
 export class OAuthStateChecker extends Context.Tag("OAuthStateChecker")<

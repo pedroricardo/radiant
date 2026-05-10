@@ -1,6 +1,15 @@
+import { Schema } from "effect"
 import * as Id from "../Id"
 export const idPrefix = "user" as const
 export const UserId = Id.schema(idPrefix)
 export type UserId = typeof UserId.Type
 
-export { User } from "./User"
+export const User = Schema.Struct({
+	id: UserId,
+	username: Schema.String,
+	email: Schema.String,
+	avatarUrl: Schema.String,
+	createdAt: Schema.DateTimeUtc,
+})
+
+export type User = typeof User.Type

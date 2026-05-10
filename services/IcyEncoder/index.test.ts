@@ -65,7 +65,7 @@ describe("IcyEncoder", () => {
 			}
 			const source = yield* AudioSource.fromPCM([frame], 44_100, 2)
 
-			const stream = yield* encoder.encode(source, {
+			const { stream } = yield* encoder.encode(source, {
 				kbps: 128,
 				metaInterval,
 				metadataTitle: title,
@@ -92,7 +92,7 @@ describe("IcyEncoder", () => {
 			}
 			const source = yield* AudioSource.fromPCM([frame], 44_100, 1)
 
-			const stream = yield* encoder.encode(source, {
+			const { stream } = yield* encoder.encode(source, {
 				kbps: 128,
 				metaInterval: 1024,
 				metadataTitle: "Mono",
@@ -113,7 +113,7 @@ describe("IcyEncoder", () => {
 				channels: 2,
 				stream: Stream.fromIterable([invalidFrame]),
 			})
-			const stream = yield* encoder.encode(invalidSource, {
+			const { stream } = yield* encoder.encode(invalidSource, {
 				kbps: 128,
 			})
 

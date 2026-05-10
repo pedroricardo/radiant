@@ -6,8 +6,10 @@ export class Drizzle extends Context.Tag("Drizzle")<Drizzle, ReturnType<typeof d
 
 export const layer = Layer.scoped(
 	Drizzle,
-	DrizzleConfig.use((c) => Effect.acquireRelease(
-		Effect.sync(() => drizzle(String(c.databaseUrl))),
-		(db) => Effect.promise(() => db.$client.close())
-	)).pipe(Effect.flatten),
+	DrizzleConfig.use((c) =>
+		Effect.acquireRelease(
+			Effect.sync(() => drizzle(String(c.databaseUrl))),
+			(db) => Effect.promise(() => db.$client.close()),
+		),
+	).pipe(Effect.flatten),
 )

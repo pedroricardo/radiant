@@ -16,13 +16,17 @@ export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
 ) {}
 
 export class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User.UserId>() {}
-
+export const security = {
+	bearer: HttpApiSecurity.bearer,
+	cookie: HttpApiSecurity.apiKey({
+		key: "session_id",
+		in: "cookie",
+	}),
+}
 export class Authorization extends HttpApiMiddleware.Tag<Authorization>()("Authorization", {
 	failure: Unauthorized,
 	provides: CurrentUser,
-	security: {
-		bearer: HttpApiSecurity.bearer,
-	},
+	security,
 }) {}
 
 export class OAuthProviderNotFound extends Schema.TaggedError<OAuthProviderNotFound>()(
@@ -33,7 +37,7 @@ export class OAuthProviderNotFound extends Schema.TaggedError<OAuthProviderNotFo
 	},
 	HttpApiSchema.annotations({ status: 404 }),
 ) {}
-
+// MultiplexerError | EncodingError
 export class OAuthLoginFailed extends Schema.TaggedError<OAuthLoginFailed>()(
 	"OAuthLoginFailed",
 	{ message: Schema.String },
@@ -64,34 +68,24 @@ const OAuthLoginResponse = Schema.Struct({
 	userId: User.UserId,
 })
 
-const MeResponse = Schema.Struct({
-	userId: User.UserId,
-})
-
 export const authGroup = HttpApiGroup.make("auth")
 	.add(
-		HttpApiEndpoint.get("listOAuthProviders")`/auth/oauth/providers`.addSuccess(
+		HttpApiEndpoint.get("listOAuthProviders")`/oauth/providers`.addSuccess(
 			Schema.Array(Schema.String),
 		),
 	)
 	.add(
-		HttpApiEndpoint.get("getOAuthAuthorizationUrl")`/auth/oauth/${ProviderParam}/url`.addSuccess(
-			Schema.String,
-		)
+		HttpApiEndpoint.get("getOAuthAuthorizationUrl")`/oauth/${ProviderParam}/url`
+			.addSuccess(Schema.String)
 			.addError(OAuthProviderNotFound)
 			.addError(OAuthAuthorizationUrlFailed),
 	)
 	.add(
-		HttpApiEndpoint.get("oauthCallback")`/auth/oauth/${ProviderParam}/callback`
+		HttpApiEndpoint.get("oauthCallback")`/oauth/${ProviderParam}/callback`
 			.setUrlParams(OAuthCallbackUrlParams)
 			.addSuccess(OAuthLoginResponse)
 			.addError(OAuthProviderNotFound)
 			.addError(OAuthLoginFailed)
 			.addError(OAuthInvalidState),
 	)
-	.add(
-		HttpApiEndpoint.get("me")`/me`
-			.addSuccess(MeResponse)
-			.middleware(Authorization),
-	)
-
+	.prefix("/auth")

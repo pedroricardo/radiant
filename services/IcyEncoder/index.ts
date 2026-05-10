@@ -1,7 +1,8 @@
 import * as lamejs from "@breezystack/lamejs"
-import { Data, Effect, Stream } from "effect"
+import { Effect, Stream } from "effect"
 import * as AudioSource from "../../lib/AudioSource"
-
+import { EncodingError } from "../../RadiantClient/lib/IcyEncoderErrors"
+export { EncodingError }
 function concatUint8Arrays(chunks: ReadonlyArray<Uint8Array>): Uint8Array {
 	let totalLength = 0
 	for (const chunk of chunks) {
@@ -36,10 +37,6 @@ function createICYMetadata(title: string): Uint8Array {
 
 	return result
 }
-export class EncodingError extends Data.TaggedError("IcyEncoder/EncodingError")<{
-	message: string
-	cause: unknown
-}> {}
 
 const DEFAULT_META_INTERVAL = 16_000
 const DEFAULT_METADATA_TITLE = "Radiant FM"
@@ -178,25 +175,31 @@ export class IcyEncoder extends Effect.Service<IcyEncoder>()("IcyEncoder", {
 			const metadataChunk = createICYMetadata(metadataTitle)
 			const mp3Encoder = new lamejs.Mp3Encoder(channels, sampleRate, options.kbps)
 
-			return source.stream.pipe(
-				Stream.mapEffect((frame) =>
-					Effect.map(encodeFrame(mp3Encoder, frame, channels), (chunk) =>
-						injectMetadata(chunk, state, metadataChunk, metaInterval),
+			return {
+				metaInterval,
+				metadataTitle,
+				kbps: options.kbps,
+				channels,
+				stream: source.stream.pipe(
+					Stream.mapEffect((frame) =>
+						Effect.map(encodeFrame(mp3Encoder, frame, channels), (chunk) =>
+							injectMetadata(chunk, state, metadataChunk, metaInterval),
+						),
 					),
-				),
-				Stream.concat(
-					Stream.fromEffect(
-						Effect.map(
-							Effect.try({
-								try: () => new Uint8Array(mp3Encoder.flush()),
-								catch: (e) =>
-									new EncodingError({ message: "failed to flush mp3 encoder", cause: e }),
-							}),
-							(chunk) => injectMetadata(chunk, state, metadataChunk, metaInterval),
+					Stream.concat(
+						Stream.fromEffect(
+							Effect.map(
+								Effect.try({
+									try: () => new Uint8Array(mp3Encoder.flush()),
+									catch: (e) =>
+										new EncodingError({ message: "failed to flush mp3 encoder", cause: e }),
+								}),
+								(chunk) => injectMetadata(chunk, state, metadataChunk, metaInterval),
+							),
 						),
 					),
 				),
-			)
+			}
 		})
 		return { encode }
 	}),

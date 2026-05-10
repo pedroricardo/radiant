@@ -1,10 +1,10 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
-import { Schema } from "effect"
-import { User } from "./User"
+import { User, UserId } from "."
+import { Authorization } from "../Auth"
 
-const idParam = HttpApiSchema.param("id", Schema.NumberFromString)
+const idParam = HttpApiSchema.param("id", UserId)
 
-export const usersGroup = HttpApiGroup.make("users").add(
-	HttpApiEndpoint.get("getUser")`/user/${idParam}`.addSuccess(User),
-)
-
+export const usersGroup = HttpApiGroup.make("users")
+	.add(HttpApiEndpoint.get("getUser")`/${idParam}`.addSuccess(User).middleware(Authorization))
+	.add(HttpApiEndpoint.get("getSelf")`/me`.addSuccess(User).middleware(Authorization))
+	.prefix("/users")

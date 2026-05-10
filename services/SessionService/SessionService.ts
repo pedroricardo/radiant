@@ -4,8 +4,13 @@ import { sessions } from "$services/Drizzle/schema/session"
 import { eq } from "drizzle-orm"
 import { Data, DateTime, Effect } from "effect"
 
-class SessionServiceError extends Data.TaggedError("SessionServiceError")<{ cause: unknown; message: string }> {}
-class SessionNotFoundError extends Data.TaggedError("SessionNotFoundError")<{ sessionId: Session.SessionId }> {}
+class SessionServiceError extends Data.TaggedError("SessionServiceError")<{
+	cause: unknown
+	message: string
+}> {}
+class SessionNotFoundError extends Data.TaggedError("SessionNotFoundError")<{
+	sessionId: Session.SessionId
+}> {}
 
 export class SessionService extends Effect.Service<SessionService>()("SessionService", {
 	accessors: true,
@@ -45,11 +50,9 @@ export class SessionService extends Effect.Service<SessionService>()("SessionSer
 						return yield* new SessionNotFoundError({ sessionId })
 					}
 					return row.userId
-				}).pipe(
-					Effect.withSpan("SessionService.getSessionUser"),
-				),
+				}).pipe(Effect.withSpan("SessionService.getSessionUser")),
 		}
 	}),
 }) {}
 
-export { SessionServiceError as Error, SessionNotFoundError };
+export { SessionServiceError as Error, SessionNotFoundError }

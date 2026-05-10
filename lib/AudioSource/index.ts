@@ -1,16 +1,12 @@
 import { Data, Effect, Function, Stream } from "effect"
+import { AudioSourceConfigurationError } from "../../RadiantClient/lib/AudioSourceErrors"
 type IsUnion<T, U = T> = T extends any ? ([U] extends [T] ? false : true) : never
 type ValidSampleRate<T extends number> = number extends T
 	? never
 	: IsUnion<T> extends true
 		? never
 		: T
-export class AudioSourceConfigurationError extends Data.TaggedError(
-	"AudioSource/ConfigurationError",
-)<{
-	readonly message: string
-}> {}
-
+export * from "../../RadiantClient/lib/AudioSourceErrors"
 const validateConfig = (sampleRate: number, channels: number) =>
 	Effect.gen(function* () {
 		if (!Number.isFinite(sampleRate) || sampleRate <= 0) {

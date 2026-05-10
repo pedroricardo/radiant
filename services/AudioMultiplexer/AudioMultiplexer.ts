@@ -1,5 +1,5 @@
 import * as AudioSource from "$lib/AudioSource"
-import { Chunk, Duration, Effect, Queue, Ref, Schedule, Scope, Stream } from "effect"
+import { Chunk, Duration, Effect, Queue, Ref, Scope, Stream } from "effect"
 import {
 	DEFAULT_CHANNELS,
 	DEFAULT_CROSSFADE_DURATION,
@@ -201,11 +201,22 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 
 			return applyGain(frame, state.masterVolume)
 		})
+		const capacity30s = Math.floor(30 / (frameDurationMs / 1000))
+		const outputQueue = yield* Queue.bounded<Float32Array>(capacity30s)
 
-		const output = Stream.repeatEffectWithSchedule(
-			nextFrame,
-			Schedule.spaced(Duration.millis(frameDurationMs)),
-		)
+		// 2. Iniciamos o "Motor de Ritmo" em background
+		// Ele vai usar o pullScope para rodar enquanto a rádio estiver ativa.
+		yield* createFrameScheduler({
+			nextFrame, // O teu efeito de mixagem
+			outputQueue, // Onde ele vai depositar os frames
+			frameDurationMs, // Ex: 20ms
+			burstSeconds: 20, // O "teto" do cache (enchimento inicial rápido)
+			batchSeconds: 10, // O intervalo de entrega após o burst
+		})
+
+		// 3. O output agora é um Stream que consome da Queue
+		// Quando o mpv pedir dados, ele lê o que o scheduler depositou aqui.
+		const output = Stream.fromQueue(outputQueue)
 		const audioSource = new AudioSource.AudioSource({
 			sampleRate: config.sampleRate,
 			channels: config.channels,
@@ -223,3 +234,41 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 		}
 	}),
 }) {}
+export const createFrameScheduler = <E, R>(options: {
+	nextFrame: Effect.Effect<Float32Array, E, R>
+	outputQueue: Queue.Enqueue<Float32Array>
+	frameDurationMs: number
+	burstSeconds: number
+	batchSeconds: number
+}) =>
+	Effect.gen(function* () {
+		const { nextFrame, outputQueue, frameDurationMs, burstSeconds, batchSeconds } = options
+		const framesPerBatch = Math.floor((batchSeconds * 1000) / frameDurationMs)
+
+		const runLoop = Effect.gen(function* () {
+			const startTime = Date.now()
+			let totalFramesProduced = 0
+
+			while (true) {
+				// Gera um lote de frames (ex: 10 segundos de áudio)
+				for (let i = 0; i < framesPerBatch; i++) {
+					const frame = yield* nextFrame
+					yield* Queue.offer(outputQueue, frame)
+					totalFramesProduced++
+				}
+
+				const audioTimeProducedMs = totalFramesProduced * frameDurationMs
+				const realTimeElapsedMs = Date.now() - startTime
+
+				// Se já passámos o burst de 30s, forçamos a espera até ao próximo ciclo
+				if (audioTimeProducedMs > burstSeconds * 1000) {
+					const targetWait = audioTimeProducedMs - realTimeElapsedMs - burstSeconds * 1000
+					if (targetWait > 0) {
+						yield* Effect.sleep(Duration.millis(targetWait))
+					}
+				}
+			}
+		})
+
+		yield* Effect.forkScoped(runLoop)
+	})

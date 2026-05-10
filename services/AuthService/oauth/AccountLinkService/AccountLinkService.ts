@@ -1,20 +1,25 @@
 import type { User } from "$lib"
+import { Drizzle } from "$services/Drizzle"
+import { oauthAccounts } from "$services/Drizzle/schema/oauthAccountsLinks"
+import * as UserRepository from "$services/UserRepository"
+import { and, eq } from "drizzle-orm"
 import { Context, DateTime, Effect, Either, Layer } from "effect"
 import type { OAuthUserInfo } from "../OAuthUserInfo"
-import { UserNotFoundError, AccountLinkError, AccountLinkLookupError } from "./errors"
-import { Drizzle } from "$services/Drizzle"
-import * as UserRepository from "$services/UserRepository"
-import { oauthAccounts } from "$services/Drizzle/schema/oauthAccountsLinks"
-import { and, eq } from "drizzle-orm"
+import { AccountLinkError, AccountLinkLookupError, UserNotFoundError } from "./errors"
 
 interface AccountLinkServiceAPI {
 	linkAccount(
 		userId: User.UserId,
 		oauthUserInfo: OAuthUserInfo,
 	): Effect.Effect<void, UserNotFoundError | UserRepository.Error | AccountLinkError>
-	getUserByExternalAccount(oauthUserInfo: OAuthUserInfo): Effect.Effect<Either.Either<User.UserId, OAuthUserInfo>, AccountLinkLookupError>
+	getUserByExternalAccount(
+		oauthUserInfo: OAuthUserInfo,
+	): Effect.Effect<Either.Either<User.UserId, OAuthUserInfo>, AccountLinkLookupError>
 }
-export class AccountLinkService extends Context.Tag("AccountLinkService")<AccountLinkService, AccountLinkServiceAPI>() {}
+export class AccountLinkService extends Context.Tag("AccountLinkService")<
+	AccountLinkService,
+	AccountLinkServiceAPI
+>() {}
 
 export const layerDrizzle = Layer.effect(
 	AccountLinkService,

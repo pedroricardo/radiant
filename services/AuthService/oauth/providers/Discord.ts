@@ -1,8 +1,7 @@
 import * as arctic from "arctic"
 import { Config, Context, Effect, Layer, Schema } from "effect"
 import { OAuthUserInfo } from "../OAuthUserInfo"
-import { OAuthValidationError, type OAuthProvider } from "../provider"
-import { OAuthProvidersRegistry } from "../provider"
+import { OAuthProvidersRegistry, OAuthValidationError, type OAuthProvider } from "../provider"
 
 export class DiscordOAuthConfig extends Context.Tag("DiscordOAuthConfig")<
 	DiscordOAuthConfig,
@@ -73,9 +72,7 @@ const discordAvatarUrl = (id: string, avatar: string | null) => {
 	return new URL("https://cdn.discordapp.com/embed/avatars/0.png")
 }
 
-export const makeDiscordProvider = (
-	config: typeof DiscordOAuthConfig.Service,
-): OAuthProvider => {
+export const makeDiscordProvider = (config: typeof DiscordOAuthConfig.Service): OAuthProvider => {
 	const discord = new arctic.Discord(config.clientId, config.clientSecret, config.redirectUri)
 	return {
 		name: "discord",
