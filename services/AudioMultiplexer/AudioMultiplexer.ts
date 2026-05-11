@@ -1,5 +1,5 @@
 import * as AudioSource from "$lib/AudioSource"
-import { Chunk, Duration, Effect, Queue, Ref, Scope, Stream } from "effect"
+import { Chunk, Duration, Effect, PubSub, Queue, Ref, Scope, Stream } from "effect"
 import {
 	DEFAULT_CHANNELS,
 	DEFAULT_CROSSFADE_DURATION,
@@ -201,36 +201,25 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 
 			return applyGain(frame, state.masterVolume)
 		})
-		const capacity30s = Math.floor(30 / (frameDurationMs / 1000))
-		const outputQueue = yield* Queue.bounded<Float32Array>(capacity30s)
-
-		// 2. Iniciamos o "Motor de Ritmo" em background
-		// Ele vai usar o pullScope para rodar enquanto a rádio estiver ativa.
-		yield* createFrameScheduler({
-			nextFrame, // O teu efeito de mixagem
-			outputQueue, // Onde ele vai depositar os frames
-			frameDurationMs, // Ex: 20ms
-			burstSeconds: 20, // O "teto" do cache (enchimento inicial rápido)
-			batchSeconds: 10, // O intervalo de entrega após o burst
-		})
-
-		// 3. O output agora é um Stream que consome da Queue
-		// Quando o mpv pedir dados, ele lê o que o scheduler depositou aqui.
-		const output = Stream.fromQueue(outputQueue)
-		const audioSource = new AudioSource.AudioSource({
+		const output = Stream.repeatEffect(nextFrame);
+		const outputFactory = Stream.broadcastDynamic(output, {
+			strategy: "sliding",
+			capacity: frameLength
+		});
+		const asAudioSource = outputFactory.pipe(Effect.map((o) => new AudioSource.AudioSource({
 			sampleRate: config.sampleRate,
 			channels: config.channels,
-			stream: output,
-		})
-		const asAudioSource = Effect.succeed(audioSource)
+			stream: o,
+		})))
 
 		return {
 			config,
 			setCluster,
 			clearCluster,
 			setMasterVolume,
-			output,
-			asAudioSource,
+			output: outputFactory,
+			outputUnsafe: output,
+			asAudioSource
 		}
 	}),
 }) {}

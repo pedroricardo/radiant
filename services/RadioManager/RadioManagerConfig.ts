@@ -1,5 +1,5 @@
-import { AudioMultiplexer } from "$services"
 import { Context, Layer } from "effect"
+import * as AudioMultiplexer from "../AudioMultiplexer"
 
 export class RadioManagerConfig extends Context.Tag("RadioManagerConfig")<
 	RadioManagerConfig,

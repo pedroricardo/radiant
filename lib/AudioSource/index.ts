@@ -1,5 +1,7 @@
-import { Data, Effect, Function, Stream } from "effect"
+import { Chunk, Data, Effect, Fiber, Function, Option, Stream } from "effect"
 import { AudioSourceConfigurationError } from "../../RadiantClient/lib/AudioSourceErrors"
+import { DEFAULT_CHANNELS, DEFAULT_FRAME_SAMPLES, DEFAULT_SAMPLE_RATE } from "../../services/AudioMultiplexer/constants"
+
 type IsUnion<T, U = T> = T extends any ? ([U] extends [T] ? false : true) : never
 type ValidSampleRate<T extends number> = number extends T
 	? never
@@ -129,12 +131,205 @@ export const fromLiveStream = <const SampleRate extends number, E, R>(
 			stream,
 		})
 	})
+const concatUint8Arrays = (
+	left: Uint8Array<ArrayBufferLike>,
+	right: Uint8Array<ArrayBufferLike>,
+): Uint8Array<ArrayBufferLike> => {
+	if (left.length === 0) {
+		return right
+	}
+	if (right.length === 0) {
+		return left
+	}
+
+	const out = new Uint8Array(left.length + right.length)
+	out.set(left, 0)
+	out.set(right, left.length)
+	return out
+}
+
 export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string) {
-	return yield* Effect.fail(
-		new AudioSourceConfigurationError({
-			message: `fromAudioFile not implemented for path: ${path}`,
-		}),
-	)
+	const sampleRate = DEFAULT_SAMPLE_RATE
+	const channels = DEFAULT_CHANNELS
+	const frameLength = DEFAULT_FRAME_SAMPLES * channels
+	const frameByteLength = frameLength * Float32Array.BYTES_PER_ELEMENT
+
+	yield* validateConfig(sampleRate, channels)
+
+	const exists = yield* Effect.promise(() => Bun.file(path).exists())
+	if (!exists) {
+		return yield* Effect.fail(
+			new AudioSourceConfigurationError({
+				message: `audio file does not exist: ${path}`,
+			}),
+		)
+	}
+
+	return new AudioSource({
+		sampleRate,
+		channels,
+		stream: Stream.unwrapScoped(
+			Effect.gen(function* () {
+				const process = yield* Effect.try({
+					try: () =>
+						Bun.spawn({
+							cmd: [
+								"ffmpeg",
+								"-v",
+								"error",
+								"-i",
+								path,
+								"-f",
+								"f32le",
+								"-acodec",
+								"pcm_f32le",
+								"-ar",
+								String(sampleRate),
+								"-ac",
+								String(channels),
+								"pipe:1",
+							],
+							stdout: "pipe",
+							stderr: "pipe",
+						}),
+					catch: (cause) =>
+						new AudioSourceConfigurationError({
+							message: `failed to spawn ffmpeg for path: ${path}: ${String(cause)}`,
+						}),
+				})
+
+				yield* Effect.addFinalizer(() =>
+					Effect.sync(() => process.kill()).pipe(Effect.ignoreLogged),
+				)
+
+				if (process.stdout == null || process.stderr == null) {
+					return yield* Effect.fail(
+						new AudioSourceConfigurationError({
+							message: `ffmpeg did not expose piped stdio for path: ${path}`,
+						}),
+					)
+				}
+
+				const stderrFiber = yield* Effect.forkScoped(
+					Effect.promise(() => new Response(process.stderr).text()).pipe(
+						Effect.catchAll((cause) =>
+							Effect.succeed(`failed to read ffmpeg stderr for ${path}: ${String(cause)}`),
+						),
+					),
+				)
+
+				const bytePull = yield* Stream.toPull(
+					Stream.fromReadableStream(
+						() => process.stdout!,
+						(cause) =>
+							new AudioSourceConfigurationError({
+								message: `failed to read ffmpeg stdout for path: ${path}: ${String(cause)}`,
+							}),
+					),
+				)
+
+				let pendingBytes: Uint8Array<ArrayBufferLike> = new Uint8Array(0)
+				let emittedAnyFrame = false
+
+				const pullFrames: Effect.Effect<
+					Chunk.Chunk<Float32Array>,
+					Option.Option<AudioSourceConfigurationError>
+				> = Effect.gen(function* () {
+					while (true) {
+						if (pendingBytes.length >= frameByteLength) {
+							const frameBytes = pendingBytes.subarray(0, frameByteLength)
+							const leftovers = pendingBytes.subarray(frameByteLength)
+							const pcmView = new Float32Array(
+								frameBytes.buffer,
+								frameBytes.byteOffset,
+								frameLength,
+							)
+							const frame = new Float32Array(frameLength)
+							frame.set(pcmView, 0)
+
+							pendingBytes = new Uint8Array(leftovers)
+							emittedAnyFrame = true
+							return Chunk.of(frame)
+						}
+
+							const nextChunk = yield* Effect.either(bytePull)
+							if (nextChunk._tag === "Right") {
+								for (const bytes of Chunk.toReadonlyArray(nextChunk.right)) {
+									pendingBytes = concatUint8Arrays(pendingBytes, bytes)
+								}
+								continue
+							}
+
+						if (Option.isSome(nextChunk.left)) {
+							return yield* Effect.fail(Option.some(nextChunk.left.value))
+						}
+
+						const exitCode = yield* Effect.promise(() => process.exited).pipe(
+							Effect.mapError(
+								(cause) =>
+									Option.some(
+										new AudioSourceConfigurationError({
+											message: `failed waiting for ffmpeg exit for path: ${path}: ${String(cause)}`,
+										}),
+									),
+							),
+						)
+						const stderr = yield* Fiber.join(stderrFiber).pipe(
+							Effect.mapError(
+								(cause) =>
+									Option.some(
+										new AudioSourceConfigurationError({
+											message: `failed collecting ffmpeg stderr for path: ${path}: ${String(cause)}`,
+										}),
+									),
+							),
+						)
+
+						if (exitCode !== 0) {
+							return yield* Effect.fail(
+								Option.some(
+									new AudioSourceConfigurationError({
+										message: `ffmpeg failed to decode audio file: ${path}: ${stderr}`,
+									}),
+								),
+							)
+						}
+
+						if (pendingBytes.length === 0) {
+							if (!emittedAnyFrame) {
+								emittedAnyFrame = true
+								return Chunk.of(new Float32Array(frameLength))
+							}
+							return yield* Effect.fail(Option.none())
+						}
+
+						const alignedByteLength =
+							pendingBytes.length -
+							(pendingBytes.length % Float32Array.BYTES_PER_ELEMENT)
+						if (alignedByteLength === 0) {
+							return yield* Effect.fail(Option.none())
+						}
+
+						const sampleCount = alignedByteLength / Float32Array.BYTES_PER_ELEMENT
+						const frame = new Float32Array(frameLength)
+						frame.set(
+							new Float32Array(
+								pendingBytes.buffer,
+								pendingBytes.byteOffset,
+								sampleCount,
+							),
+							0,
+						)
+						pendingBytes = new Uint8Array(0)
+						emittedAnyFrame = true
+						return Chunk.of(frame)
+					}
+				})
+
+				return Stream.repeatEffectChunkOption(pullFrames)
+			}),
+		),
+	})
 })
 export const combineSources = Function.dual<
 	<const SampleRate extends number, E2, R2>(

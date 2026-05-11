@@ -1,6 +1,6 @@
 import type { Radio } from "$lib"
-import { IcyEncoder } from "$services"
 import { Cache, Duration, Effect } from "effect"
+import * as IcyEncoder from "../IcyEncoder"
 import { RadioManagerConfig } from "./RadioManagerConfig"
 import * as RadioStream from "./RadioStream"
 

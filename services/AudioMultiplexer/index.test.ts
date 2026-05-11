@@ -29,11 +29,11 @@ const collectFrames = <E, R>(
 	})
 
 describe("AudioMultiplexer", () => {
-	it.layer(Layer.provide(AudioMultiplexer.Default, Layer.scope))((it) => {
+	it.layer(AudioMultiplexer.Default)((it) => {
 		it.effect("emits continuous silence when no cluster is active", () =>
 			Effect.gen(function* () {
 				const multiplexer = yield* AudioMultiplexer
-				const list = yield* collectFrames(multiplexer.output, 2)
+				const list = yield* collectFrames(multiplexer.outputUnsafe, 2)
 
 				expect(list).toHaveLength(2)
 				expect(list[0]?.length).toBe(FRAME_LENGTH)
@@ -43,7 +43,7 @@ describe("AudioMultiplexer", () => {
 			}),
 		)
 
-		it.effect("mixes multiple sources inside one cluster", () =>
+		it.scoped("mixes multiple sources inside one cluster", () =>
 			Effect.gen(function* () {
 				const multiplexer = yield* AudioMultiplexer
 				const sourceA = yield* AudioSource.fromPCM([constantFrame(1)], SAMPLE_RATE, 2)
@@ -54,13 +54,13 @@ describe("AudioMultiplexer", () => {
 					{ id: "b", source: sourceB },
 				])
 
-				const first = yield* collectFrames(multiplexer.output, 1)
+				const first = yield* collectFrames(multiplexer.outputUnsafe, 1)
 				expect(first).toHaveLength(1)
 				expect(firstSample(first[0]!)).toBeCloseTo(0.5, 5)
 			}),
 		)
 
-		it.effect("crossfades between clusters", () =>
+		it.scoped("crossfades between clusters", () =>
 			Effect.gen(function* () {
 				const multiplexer = yield* AudioMultiplexer
 				const loud = yield* AudioSource.fromPCM(
@@ -87,14 +87,14 @@ describe("AudioMultiplexer", () => {
 				)
 
 				yield* multiplexer.setCluster([{ id: "loud", source: loud }], { crossfadeDuration: 0 })
-				const before = yield* collectFrames(multiplexer.output, 1)
+				const before = yield* collectFrames(multiplexer.outputUnsafe, 1)
 				expect(before).toHaveLength(1)
 				expect(firstSample(before[0]!)).toBeCloseTo(1, 5)
 
 				yield* multiplexer.setCluster([{ id: "quiet", source: quiet }], {
 					crossfadeDuration: "100 millis",
 				})
-				const during = yield* collectFrames(multiplexer.output, 4)
+				const during = yield* collectFrames(multiplexer.outputUnsafe, 4)
 				const levels = during.map((frame) => firstSample(frame))
 
 				expect(levels[0]).toBeGreaterThan(levels[3] ?? 0)
