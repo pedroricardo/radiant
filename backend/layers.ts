@@ -7,11 +7,11 @@ import * as AccountLinkService from "./services/AuthService/oauth/AccountLinkSer
 import * as SessionService from "./services/SessionService"
 import * as UserRepository from "./services/UserRepository"
 import { Layer } from "effect"
-import { TestDbLayer } from "./test/support/testDb"
 
-// const drizzleConfigLayer = Drizzle.Config.fromConfig
-// const dbLayer = Drizzle.layer.pipe(Layer.provide(drizzleConfigLayer))
-const dbLayer = TestDbLayer;
+const drizzleConfigLayer = Drizzle.Config.fromConfig
+const dbLayer = Drizzle.layer.pipe(Layer.provide(drizzleConfigLayer))
+//import { TestDbLayer } from "./test/support/testDb"
+//const dbLayer = TestDbLayer;
 
 const userRepoLayer = UserRepository.UserRepository.Default.pipe(Layer.provideMerge(dbLayer))
 const sessionLayer = SessionService.SessionService.Default.pipe(Layer.provideMerge(dbLayer))

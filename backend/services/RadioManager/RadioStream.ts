@@ -4,7 +4,7 @@ import { Clock, Data, Duration, Effect, Fiber, Layer, Queue, Ref, Scope, Stream 
 import * as AudioMultiplexer from "../AudioMultiplexer"
 import * as IcyEncoder from "../IcyEncoder"
 import { RadioManagerConfig } from "./RadioManagerConfig"
-
+import path from "node:path"
 type RadioStreamError =
 	| AudioMultiplexer.MultiplexerError
 	| AudioSource.AudioSourceConfigurationError
@@ -336,13 +336,21 @@ const startRadio = Effect.fn("RadioStream.startRadio")(function* (radioId: Radio
 			),
 		),
 	)
-
 	const runtime = yield* makeRuntime(multiplexer).pipe(
 		Effect.provideService(Scope.Scope, scope),
 	)
-
 		// Fibra que mantém o Playout Manager a correr (alimentando o multiplexer)
-		const playoutManagerFiber = yield* Effect.never.pipe(
+		const playoutManagerFiber = yield* Effect.gen(function*() {
+
+		let p = "/home/tiago/Área de Trabalho/.Atividades/Probe/radiant/backend/services/RadioManager/Fujii Kaze - Matsuri.m4a";
+		console.log(p)
+		yield* multiplexer.setCluster([{
+			id: "test",
+			volume: 1.0,
+			source: yield* AudioSource.fromAudioFile(p)
+		}])
+			yield* Effect.never
+		}).pipe(
 			Effect.onExit((e) => Scope.close(scope, e)),
 			Effect.forkDaemon,
 		)

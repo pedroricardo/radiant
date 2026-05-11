@@ -1,6 +1,5 @@
 import { Drizzle } from "@radiant/backend/services/Drizzle"
-import { SQL } from "bun"
-import { drizzle } from "drizzle-orm/bun-sql"
+
 import { Clock, Context, Data, Effect, Layer, Schedule } from "effect"
 import fs from "node:fs/promises"
 import path from "node:path"
@@ -11,7 +10,7 @@ import { AbstractWaitStrategy } from "testcontainers/build/wait-strategies/wait-
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-type Sql = SQL
+type Sql = Bun.SQL
 export class TestSql extends Context.Tag("TestSql")<TestSql, Sql>() {}
 
 export class StartContainerError extends Data.TaggedError("TestDbStartContainerError")<{
@@ -107,7 +106,7 @@ const sqlLayer = Layer.scoped(
 			)
 			const databaseUrl = `${baseDBUrl}/${randomDatabaseName}`
 
-			const sql = new SQL(databaseUrl)
+			const sql = new Bun.SQL(databaseUrl)
 			yield* runMigrationsDir(sql)
 			return { sql, container, bootstrapDBConnection, randomDatabaseName }
 		}),
@@ -125,7 +124,7 @@ const sqlLayer = Layer.scoped(
 
 const drizzleLayer = Layer.effect(
 	Drizzle,
-	Effect.flatMap(TestSql, (sql) => Effect.sync(() => drizzle(sql))),
+	Effect.flatMap(TestSql, (sql) => Effect.promise(async () => (await import("drizzle-orm/bun-sql")).drizzle(sql))),
 ).pipe(Layer.provideMerge(sqlLayer))
 
 export const TestDbLayer = Layer.mergeAll(sqlLayer, drizzleLayer)

@@ -2,7 +2,7 @@ import { FetchHttpClient, HttpApiClient } from "@effect/platform"
 import { Config, Context, Effect, Layer } from "effect"
 import * as ApiContract from "./contract"
 
-const make = Effect.andThen(Config.string("RADIANT_API_URL"), (baseUrl) =>
+const make = Effect.andThen(Config.string("RADIANT_API_URL").pipe(Config.withDefault("http://localhost:3000/")), (baseUrl) =>
 	HttpApiClient.make(ApiContract.httpApi, { baseUrl }),
 )
 export class RadiantClient extends Context.Tag("RadiantClient")<
@@ -11,5 +11,14 @@ export class RadiantClient extends Context.Tag("RadiantClient")<
 >() {}
 export const layer = Layer.effect(RadiantClient, make)
 export const withFetch = layer.pipe(Layer.provide(FetchHttpClient.layer))
+
+export const withHandler = (handler: (req: Request) => Promise<Response>) =>
+	layer.pipe(
+		Layer.provide(FetchHttpClient.layer),
+		Layer.provide(
+			Layer.succeed(FetchHttpClient.Fetch, ((input: RequestInfo | URL, init?: RequestInit) =>
+				handler(new Request(input, init))) as typeof fetch),
+		),
+	)
 export * from "./lib"
 export { ApiContract }

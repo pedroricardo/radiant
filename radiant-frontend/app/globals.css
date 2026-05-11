@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #5af0ad;
+  --foreground: #fff;
 }
 
 @theme inline {
@@ -10,17 +10,61 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-neo-black: #050505;
+  --color-neo-paper: #f6f0e4;
+  --color-neo-mint: #58efb0;
+  --color-neo-orange: #ff8f3f;
+  --color-neo-red: #ff4d3d;
+  --color-neo-white: #ffffff;
+
+  --spacing-grid: 28px;
+  --spacing-shadow-sm: 4px;
+  --spacing-shadow-md: 6px;
+  --spacing-shadow-lg: 8px;
+  --spacing-shadow-xl: 10px;
+
+  --radius-neo: 0px;
+
+  --text-kicker: 0.72rem;
+  --text-micro: 0.7rem;
+  --text-widget-title: 2rem;
+
+  --tracking-kicker: 0.22em;
+  --tracking-micro: 0.14em;
+  --tracking-wide-brutal: 0.12em;
+
+  --border-heavy: 4px;
+  --border-mid: 3px;
+  --border-thin: 2px;
+
+  --shadow-neo-panel: 10px 10px 0 0 #000;
+  --shadow-neo-panel-mobile: 7px 7px 0 0 #000;
+  --shadow-neo-kicker: 6px 6px 0 0 #000;
+  --shadow-neo-badge: 4px 4px 0 0 #000;
+  --shadow-neo-button-light: 8px 8px 0 0 #fff;
+  --shadow-neo-button-accent: 8px 8px 0 0 #ff8f3f;
+  --shadow-neo-button-dark: 6px 6px 0 0 #ff8f3f;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #4c4c4c;
 }
 
 body {
-  background: var(--background);
+  background:
+    linear-gradient(to right, rgb(0 0 0 / 7%) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(0 0 0 / 7%) 1px, transparent 1px),
+    linear-gradient(135deg, #4f4f4f 0%, #656565 100%);
+  background-size: var(--spacing-grid) var(--spacing-grid), var(--spacing-grid) var(--spacing-grid), cover;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+  color: inherit;
 }

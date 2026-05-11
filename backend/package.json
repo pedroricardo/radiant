@@ -22,6 +22,10 @@
 			"types": "./services/index.ts",
 			"default": "./services/index.ts"
 		},
+		"./services/Drizzle": {
+			"types": "./services/Drizzle/index.ts",
+			"default": "./services/Drizzle/index.ts"
+		},
 		"./services/*": {
 			"types": "./services/*",
 			"default": "./services/*"

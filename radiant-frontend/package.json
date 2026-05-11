@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "bun --bun next dev",
-    "build": "bun --bun next build",
+    "dev": "NEXT_MANUAL_SIG_HANDLE=true bun --bun next dev",
+    "build": "NEXT_MANUAL_SIG_HANDLE=true bun next build",
     "start": "NEXT_MANUAL_SIG_HANDLE=true bun --bun next start"
   },
   "dependencies": {
@@ -12,7 +12,9 @@
     "@radiant/client": "workspace:*",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+		"@effect/platform": "^0.94.5",
+		"effect": "^3.19.19"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
