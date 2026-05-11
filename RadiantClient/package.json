@@ -1,0 +1,63 @@
+{
+	"name": "@radiant/client",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"sideEffects": false,
+	"main": "./index.ts",
+	"types": "./index.ts",
+	"exports": {
+		".": {
+			"types": "./index.ts",
+			"default": "./index.ts"
+		},
+		"./contract": {
+			"types": "./contract.ts",
+			"default": "./contract.ts"
+		},
+		"./lib": {
+			"types": "./lib/index.ts",
+			"default": "./lib/index.ts"
+		},
+		"./lib/ApiContract": {
+			"types": "./lib/ApiContract/index.ts",
+			"default": "./lib/ApiContract/index.ts"
+		},
+		"./lib/Auth": {
+			"types": "./lib/Auth/index.ts",
+			"default": "./lib/Auth/index.ts"
+		},
+		"./lib/Id": {
+			"types": "./lib/Id/index.ts",
+			"default": "./lib/Id/index.ts"
+		},
+		"./lib/Radio": {
+			"types": "./lib/Radio/index.ts",
+			"default": "./lib/Radio/index.ts"
+		},
+		"./lib/Session": {
+			"types": "./lib/Session/index.ts",
+			"default": "./lib/Session/index.ts"
+		},
+		"./lib/User": {
+			"types": "./lib/User/index.ts",
+			"default": "./lib/User/index.ts"
+		},
+		"./lib/AudioMultiplexerErrors": {
+			"types": "./lib/AudioMultiplexerErrors.ts",
+			"default": "./lib/AudioMultiplexerErrors.ts"
+		},
+		"./lib/AudioSourceErrors": {
+			"types": "./lib/AudioSourceErrors.ts",
+			"default": "./lib/AudioSourceErrors.ts"
+		},
+		"./lib/IcyEncoderErrors": {
+			"types": "./lib/IcyEncoderErrors.ts",
+			"default": "./lib/IcyEncoderErrors.ts"
+		}
+	},
+	"peerDependencies": {
+		"@effect/platform": "^0.94.5",
+		"effect": "^3.19.19"
+	}
+}

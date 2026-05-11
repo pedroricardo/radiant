@@ -1,30 +1,25 @@
 {
 	"name": "radiant",
-	"module": "index.ts",
 	"type": "module",
 	"private": true,
+	"workspaces": [
+		"RadiantClient",
+		"backend",
+		"radiant-frontend"
+	],
 	"scripts": {
-		"add-test-migration": "bun --bun drizzle-kit generate --out .\\test\\db\\ --dialect postgresql --schema ./services/Drizzle/schema/",
-		"db:push": "bun --bun drizzle-kit push"
+		"add-test-migration": "bun --bun drizzle-kit generate --out ./backend/test/db --dialect postgresql --schema ./backend/services/Drizzle/schema/",
+		"build": "bun run --cwd radiant-frontend build",
+		"dev": "bun run --cwd radiant-frontend dev",
+		"start": "bun run --cwd radiant-frontend start",
+		"typecheck": "bun run typecheck:backend && bun run typecheck:frontend",
+		"typecheck:backend": "bunx tsc --noEmit -p backend/tsconfig.json",
+		"typecheck:frontend": "bunx tsc --noEmit -p radiant-frontend/tsconfig.json"
 	},
 	"devDependencies": {
-		"@types/bun": "^1.3.10",
-		"bun-types": "^1.3.10",
 		"drizzle-kit": "^0.31.9",
-		"@testcontainers/postgresql": "^10.10.3",
 		"prettier": "^3.8.1",
-		"prettier-plugin-organize-imports": "^4.3.0"
-	},
-	"peerDependencies": {
+		"prettier-plugin-organize-imports": "^4.3.0",
 		"typescript": "^5"
-	},
-	"dependencies": {
-		"@breezystack/lamejs": "^1.2.7",
-		"@effect/platform": "^0.94.5",
-		"@effect/platform-bun": "^0.87.1",
-		"arctic": "^3.7.0",
-		"drizzle-orm": "^0.45.1",
-		"effect": "^3.19.19",
-		"postgres": "^3.4.4"
 	}
 }

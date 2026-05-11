@@ -11,4 +11,5 @@ export class RadiantClient extends Context.Tag("RadiantClient")<
 >() {}
 export const layer = Layer.effect(RadiantClient, make)
 export const withFetch = layer.pipe(Layer.provide(FetchHttpClient.layer))
+export * from "./lib"
 export { ApiContract }
