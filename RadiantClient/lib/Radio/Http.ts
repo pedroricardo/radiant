@@ -9,7 +9,7 @@ const RadioIdParam = HttpApiSchema.param("radioId", RadioId)
 
 export const radioGroup = HttpApiGroup.make("radio")
 	.add(
-		HttpApiEndpoint.get("listen")`/${RadioIdParam}`
+		HttpApiEndpoint.get("listen")`/${RadioIdParam}/listen`
 			.addSuccess(
 				Schema.Uint8ArrayFromSelf.pipe(
 					HttpApiSchema.withEncoding({
