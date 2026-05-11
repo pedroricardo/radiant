@@ -28,8 +28,6 @@ export const webHandler = {
 
 export const inProcessApiClient = async (headers: () => Promise<Headers>) => {
 	const _headers = await headers();
-	console.log(_headers.toJSON())
-
 	return RadiantClient.withHandler(async (r) => await webHandler.handler(new Request(r, {
 	headers: _headers
 })))};
