@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Radiant",
-  description: "Build and automate web radio with a hard-edged broadcast stack."
+  description: "Faz o teu som"
 }
 
 export default function RootLayout({

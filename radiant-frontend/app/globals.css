@@ -45,6 +45,7 @@
   --shadow-neo-button-light: 8px 8px 0 0 #fff;
   --shadow-neo-button-accent: 8px 8px 0 0 #ff8f3f;
   --shadow-neo-button-dark: 6px 6px 0 0 #ff8f3f;
+
 }
 
 * {
@@ -52,15 +53,10 @@
 }
 
 html {
-  background: #4c4c4c;
+  background: var(--color-blue-50);
 }
 
 body {
-  background:
-    linear-gradient(to right, rgb(0 0 0 / 7%) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(0 0 0 / 7%) 1px, transparent 1px),
-    linear-gradient(135deg, #4f4f4f 0%, #656565 100%);
-  background-size: var(--spacing-grid) var(--spacing-grid), var(--spacing-grid) var(--spacing-grid), cover;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
