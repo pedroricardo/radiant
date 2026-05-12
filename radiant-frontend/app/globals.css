@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #5af0ad;
-  --foreground: #fff;
+  --background: #dce9ff;
+  --foreground: #050505;
 }
 
 @theme inline {
@@ -11,12 +11,35 @@
   --font-sans: var(--font-grotesk);
   --font-mono: var(--font-tomorrow);
 
-  --color-neo-black: #050505;
-  --color-neo-paper: #f6f0e4;
-  --color-neo-mint: #58efb0;
-  --color-neo-orange: #ff8f3f;
-  --color-neo-red: #ff4d3d;
-  --color-neo-white: #ffffff;
+  /* Radiant semantic palette */
+  --color-canvas: #dce9ff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f6f0e4;
+  --color-surface-strong: #050505;
+  --color-surface-accent: #8bb9ef;
+  --color-surface-live: #ff4d3d;
+
+  --color-ink: #050505;
+  --color-ink-inverse: #ffffff;
+  --color-ink-soft: rgb(5 5 5 / 0.6);
+  --color-ink-muted: rgb(5 5 5 / 0.75);
+
+  --color-signal: #58efb0;
+  --color-signal-warm: #ff8f3f;
+  --color-signal-live: #ff4d3d;
+  --color-signal-info: #8bb9ef;
+  --color-signal-success: #58efb0;
+
+  --color-line-strong: #050505;
+  --color-line-soft: rgb(5 5 5 / 0.2);
+
+  /* Backwards-compatible aliases for existing classes */
+  --color-neo-black: var(--color-ink);
+  --color-neo-paper: var(--color-surface-muted);
+  --color-neo-mint: var(--color-signal);
+  --color-neo-orange: var(--color-signal-warm);
+  --color-neo-red: var(--color-signal-live);
+  --color-neo-white: var(--color-surface);
 
   --spacing-grid: 28px;
   --spacing-shadow-sm: 4px;
@@ -25,10 +48,16 @@
   --spacing-shadow-xl: 10px;
 
   --radius-neo: 0px;
+  --radius-panel: 0px;
+  --radius-control: 0px;
 
   --text-kicker: 0.72rem;
   --text-micro: 0.7rem;
   --text-widget-title: 2rem;
+  --text-app-title: 2.75rem;
+  --text-panel-title: 1.35rem;
+  --text-toolbar: 0.8rem;
+  --text-status: 0.72rem;
 
   --tracking-kicker: 0.22em;
   --tracking-micro: 0.14em;
@@ -37,6 +66,9 @@
   --border-heavy: 4px;
   --border-mid: 3px;
   --border-thin: 2px;
+  --border-panel: var(--border-mid);
+  --border-control: var(--border-mid);
+  --border-hairline: 1px;
 
   --shadow-neo-panel: 10px 10px 0 0 #000;
   --shadow-neo-panel-mobile: 7px 7px 0 0 #000;
@@ -46,6 +78,15 @@
   --shadow-neo-button-accent: 8px 8px 0 0 #ff8f3f;
   --shadow-neo-button-dark: 6px 6px 0 0 #ff8f3f;
 
+  --shadow-panel: var(--shadow-neo-panel);
+  --shadow-panel-mobile: var(--shadow-neo-panel-mobile);
+  --shadow-control: var(--shadow-neo-badge);
+  --shadow-kicker: var(--shadow-neo-kicker);
+  --shadow-button-accent: var(--shadow-neo-button-accent);
+  --shadow-button-dark: var(--shadow-neo-button-dark);
+
+  --breakpoint-dashboard: 120rem;
+
 }
 
 * {
@@ -53,12 +94,13 @@
 }
 
 html {
-  background: var(--color-blue-50);
+  background: var(--color-canvas);
 }
 
 body {
-  color: var(--foreground);
+  color: #000;
   font-family: var(--font-grotesk), Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
 }
 
 a {

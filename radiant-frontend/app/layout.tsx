@@ -4,7 +4,8 @@ import "./globals.css"
 
 export const metadata: Metadata = {
   title: "Radiant",
-  description: "Faz o teu som"
+  description: "Faz o teu som",
+	icons: "/favicon.svg"
 }
 
 export default function RootLayout({
