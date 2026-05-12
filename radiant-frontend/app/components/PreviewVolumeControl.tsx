@@ -1,22 +1,64 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { tomorrowFont } from "../lib/fonts"
 import { VerticalSlider } from "./ui/VerticalSlider"
 import { Button } from "./ui/Button"
 
-export function PreviewVolumeControl() {
-	const [volume, setVolume] = useState(72)
-	const [lastVolume, setLastVolume] = useState(72)
-	const muted = volume === 0
+type PreviewVolumeControlProps = {
+	volume?: number
+	defaultVolume?: number
+	muted?: boolean
+	defaultMuted?: boolean
+	onVolumeChange?: (volume: number) => void
+	onMutedChange?: (muted: boolean) => void
+}
+
+export function PreviewVolumeControl(props: PreviewVolumeControlProps) {
+	const isControlledVolume = props.volume !== undefined
+	const isControlledMuted = props.muted !== undefined
+	const [uncontrolledVolume, setUncontrolledVolume] = useState(props.defaultVolume ?? 72)
+	const [uncontrolledMuted, setUncontrolledMuted] = useState(props.defaultMuted ?? false)
+	const [lastVolume, setLastVolume] = useState(props.defaultVolume ?? 72)
+
+	const volume = isControlledVolume ? props.volume! : uncontrolledVolume
+	const muted = isControlledMuted ? props.muted! : uncontrolledMuted
+
+	useEffect(() => {
+		if (!muted && volume > 0) {
+			setLastVolume(volume)
+		}
+	}, [muted, volume])
+
+	const setVolume = (nextVolume: number) => {
+		if (!isControlledVolume) {
+			setUncontrolledVolume(nextVolume)
+		}
+
+		if (nextVolume > 0 && !muted) {
+			setLastVolume(nextVolume)
+		}
+
+		props.onVolumeChange?.(nextVolume)
+	}
+
+	const setMuted = (nextMuted: boolean) => {
+		if (!isControlledMuted) {
+			setUncontrolledMuted(nextMuted)
+		}
+
+		props.onMutedChange?.(nextMuted)
+	}
 
 	const toggleMute = () => {
 		if (muted) {
+			setMuted(false)
 			setVolume(lastVolume === 0 ? 72 : lastVolume)
 			return
 		}
 
 		setLastVolume(volume)
+		setMuted(true)
 		setVolume(0)
 	}
 

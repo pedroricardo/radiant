@@ -4,7 +4,7 @@ import { cn } from "../../lib/utils"
 import { Card, CardContent } from "./Card"
 
 type CoverArtProps = {
-	src: StaticImageData
+	src: StaticImageData | string
 	alt: string
 	className?: string
 }

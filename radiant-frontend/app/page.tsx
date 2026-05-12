@@ -12,9 +12,7 @@ import { Badge } from "./components/ui/Badge";
 import { Button } from "./components/ui/Button";
 import { HeroCopy } from "./components/home/HeroCopy";
 import { FeatureStatsRow } from "./components/home/FeatureStatsRow";
-import { PreviewCard } from "./components/home/PreviewCard";
-import { ScheduleWindowCard } from "./components/home/ScheduleWindowCard";
-import { StreamHealthCard } from "./components/home/StreamHealthCard";
+import { PreviewCard } from "./components/dashboard/PreviewCard";
 async function getUser() {
 	// Este runEffect é especial
 	// Ele injeta um RadiantClient com um FetchHttpClient falso que invês de usar o fetch, ele chama o
@@ -64,7 +62,18 @@ export default async function Home() {
 					</div>
 
 					<div className="gap-0 bg-blue-50/70 p-4 sm:p-6 flex flex-col justify-center">
-						<PreviewCard cover={matsuriCover} />
+						<PreviewCard
+							cover={matsuriCover}
+							coverAlt="Matsuri cover art"
+							title="Matsuri"
+							artist="Fujii Kaze"
+							playlistName="Sunset Rotation / Festival Cuts"
+							endsAt="18:24"
+							nextTrackLabel="Lamp - 恋人へ / Koibito e"
+							defaultVolume={72}
+							defaultMuted={false}
+							isLive
+						/>
 						<FeatureStatsRow className="mt-4" />
 					</div>
 				</section>
