@@ -53,12 +53,13 @@ async function Layout(props: PropsWithChildren) {
 	</div>
 }
 export default async function Home() {
+	const user = await getUser()
 
 	return (<Layout>
 			<main className="shadow-neo-panel bg-white m-3 mt-6 border-neo-black border-3 min-h-screen">
 				<section className="flex min-h-[90vh] flex-col 2xl:grid 2xl:grid-cols-2">
 					<div className="border-b-3 border-neo-black p-6 text-neo-black sm:p-8 2xl:flex 2xl:flex-col 2xl:justify-center 2xl:border-b-0 2xl:border-r-3 2xl:p-12">
-						<HeroCopy />
+						<HeroCopy ctaHref={Option.isSome(user) ? "/dashboard" : "/login"} />
 					</div>
 
 					<div className="gap-0 bg-blue-50/70 p-4 sm:p-6 flex flex-col justify-center">

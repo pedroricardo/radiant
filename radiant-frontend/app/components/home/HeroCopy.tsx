@@ -1,7 +1,7 @@
 import { Button } from "../ui/Button"
 import { displayFont, groteskFont } from "../../lib/fonts"
 
-export function HeroCopy() {
+export function HeroCopy(props: { ctaHref?: string }) {
 	return (
 		<div>
 			<h2 className={`${displayFont.className} max-w-[8ch] text-[4.2rem] leading-[0.88] text-neo-black sm:text-[5.6rem] lg:text-[7.4rem]`}>
@@ -16,7 +16,7 @@ export function HeroCopy() {
 
 			<div className="mt-8 flex flex-wrap gap-4">
 				<Button asChild>
-					<a href="/login" draggable={false}>
+					<a href={props.ctaHref ?? "/login"} draggable={false}>
 						Get Started
 					</a>
 				</Button>

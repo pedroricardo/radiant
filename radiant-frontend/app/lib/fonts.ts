@@ -7,10 +7,12 @@ export const displayFont = Black_Ops_One({
 
 export const groteskFont = Space_Grotesk({
 	weight: "variable",
-	subsets: ["latin"]
+	subsets: ["latin"],
+	variable: "--font-grotesk"
 })
 
 export const tomorrowFont = Tomorrow({
 	weight: ["400", "700", "800"],
-	subsets: ["latin"]
+	subsets: ["latin"],
+	variable: "--font-tomorrow"
 })
