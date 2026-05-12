@@ -1,6 +1,7 @@
 import { RadiantClient } from "@radiant/client"
 import { Effect } from "effect"
 import Image from "next/image"
+import { redirect } from "next/navigation"
 
 import discordIcon from "../assets/Discord-Symbol-Black.svg"
 import githubIcon from "../assets/GitHub_Invertocat_Black.svg"
@@ -31,6 +32,16 @@ async function getOAuthProviders() {
 	}))
 }
 
+async function getCurrentUser() {
+	return runEffect(Effect.gen(function* () {
+		const client = yield* RadiantClient
+		return yield* client.users.getSelf().pipe(
+			Effect.asSome,
+			Effect.catchTag("Unauthorized", () => Effect.succeed(null)),
+		)
+	}))
+}
+
 function RadiantLogo() {
 	return (
 		<h1 className={`${tomorrowFont.className} text-3xl font-bold tracking-tighter relative`}>
@@ -41,6 +52,11 @@ function RadiantLogo() {
 }
 
 export default async function LoginPage() {
+	const currentUser = await getCurrentUser()
+	if (currentUser != null) {
+		redirect("/dashboard")
+	}
+
 	const providers = await getOAuthProviders()
 
 	return (
