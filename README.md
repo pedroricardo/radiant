@@ -127,4 +127,3 @@ Some of the main directions already being explored in the repo:
 ## Notes
 
 - `PLAYOUT_MANAGER_PLAN.md` contains the current planning work for the scheduling side of the system.
-- `radiant-frontend/README.md` is still the default Next.js scaffold README and can be cleaned up later.

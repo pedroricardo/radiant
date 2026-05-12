@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# radiant-frontend
 
-## Getting Started
+This is the Next.js frontend for Radiant.
 
-First, run the development server:
+It is responsible for:
+
+- rendering the public site and future dashboard
+- handling page routing and UI composition
+- serving the API through Next.js route handlers
+- calling the Effect backend in-process through `@radiant/backend`
+
+## Important Detail
+
+This app does not talk to a separate local API server during normal development.
+
+Instead:
+
+- Next.js owns the HTTP server
+- `/api/*` is handled by route handlers inside this app
+- those route handlers call the backend `webHandler`
+- the backend runs in-process, on the same origin
+
+## Scripts
+
+From this folder:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun run dev
+bun run build
+bun run start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Workspace Dependencies
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This workspace imports:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `@radiant/backend`
+- `@radiant/client`
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+So the frontend, backend, and shared API contract stay in the same monorepo and evolve together.
