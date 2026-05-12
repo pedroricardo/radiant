@@ -8,7 +8,9 @@ const make = Effect.andThen(Config.string("RADIANT_API_URL").pipe(Config.withDef
 export class RadiantClient extends Context.Tag("RadiantClient")<
 	RadiantClient,
 	Effect.Effect.Success<typeof make>
->() {}
+>() {
+	static readonly use = <T, E, R>(cb: (rc: typeof RadiantClient.Service) => Effect.Effect<T, E, R>) => Effect.flatMap(RadiantClient, cb)
+}
 export const layer = Layer.effect(RadiantClient, make)
 export const withFetch = layer.pipe(Layer.provide(FetchHttpClient.layer))
 

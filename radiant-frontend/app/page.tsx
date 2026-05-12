@@ -1,42 +1,24 @@
 "use server";
 
 import { PropsWithChildren } from "react"
-import {RadiantClient} from "@radiant/client"
-import {Effect, Option} from "effect"
-import { runEffect } from "./lib/serverApiClient";
-import waveIcon from "./assets/logo-wave.svg"
+import { Option } from "effect"
 import matsuriCover from "./assets/まつり-foto.png"
-import Image from "next/image";
-import { groteskFont, tomorrowFont } from "./lib/fonts";
+import { groteskFont } from "./lib/fonts";
 import { Badge } from "./components/ui/Badge";
 import { Button } from "./components/ui/Button";
+import { RadiantLogo } from "./components/RadiantLogo";
 import { HeroCopy } from "./components/home/HeroCopy";
 import { FeatureStatsRow } from "./components/home/FeatureStatsRow";
 import { PreviewCard } from "./components/dashboard/PreviewCard";
-async function getUser() {
-	// Este runEffect é especial
-	// Ele injeta um RadiantClient com um FetchHttpClient falso que invês de usar o fetch, ele chama o
-	// webHandler diretamente, assim ele consegue fazer requesições pro backend sem roundtrips por TCP ou pela rede
-	// Ele apenas simplesmente chama uma função com um Request e recebe um Response de volta e o HttpClient trata de converter
-	// o Response em algo que nós entendemos aqui
-	return runEffect(Effect.gen(function* () {
-		const client = yield* RadiantClient;
-		return yield* client.users.getSelf().pipe(
-			Effect.asSome,
-			Effect.catchTag("Unauthorized", () => Effect.succeed(Option.none())),
-		)
-	}))
-}
+import { getCurrentUser } from "./lib/auth";
+import { runServerEffect } from "./lib/serverApiClient";
+
 function LoginButton() {
 	return <Button asChild variant="secondary" className="cursor-pointer"><a href="/login" draggable={false}>Stream now</a></Button>
 }
 
-function RadiantLogo() {
-	return <h1 className={`${tomorrowFont.className} text-3xl font-bold tracking-tighter relative`}>Radiant <Image alt="logo wave icon" className="w-4 absolute -right-4 -top-0.5" src={waveIcon}/></h1>
-}
-
 async function Layout(props: PropsWithChildren) {
-	const user = await getUser();
+	const user = await runServerEffect(getCurrentUser());
 	return <div className="container mx-auto">
 		<nav className="bg-white m-3 shadow-neo-panel border-3 border-neo-black select-none">
 			<div className="flex justify-between items-center py-4 px-6 text-neo-black">
@@ -53,7 +35,7 @@ async function Layout(props: PropsWithChildren) {
 	</div>
 }
 export default async function Home() {
-	const user = await getUser()
+	const user = await runServerEffect(getCurrentUser())
 
 	return (<Layout>
 			<main className="shadow-neo-panel bg-white m-3 mt-6 border-neo-black border-3 min-h-screen">

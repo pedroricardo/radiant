@@ -1,16 +1,17 @@
 import { RadiantClient } from "@radiant/client"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import Image from "next/image"
 import { redirect } from "next/navigation"
 
 import discordIcon from "../assets/Discord-Symbol-Black.svg"
 import githubIcon from "../assets/GitHub_Invertocat_Black.svg"
-import waveIcon from "../assets/logo-wave.svg"
+import { RadiantLogo } from "../components/RadiantLogo"
 import { Badge } from "../components/ui/Badge"
 import { Button } from "../components/ui/Button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/Card"
 import { displayFont, groteskFont, tomorrowFont } from "../lib/fonts"
-import { runEffect } from "../lib/serverApiClient"
+import { getCurrentUser } from "../lib/auth"
+import { runServerEffect } from "../lib/serverApiClient"
 
 const providerMeta = {
 	github: {
@@ -25,39 +26,16 @@ const providerMeta = {
 	},
 } as const satisfies Record<string, { label: string; className: string; icon: typeof githubIcon }>
 
-async function getOAuthProviders() {
-	return runEffect(Effect.gen(function* () {
-		const client = yield* RadiantClient
-		return yield* client.auth.listOAuthProviders()
-	}))
-}
-
-async function getCurrentUser() {
-	return runEffect(Effect.gen(function* () {
-		const client = yield* RadiantClient
-		return yield* client.users.getSelf().pipe(
-			Effect.asSome,
-			Effect.catchTag("Unauthorized", () => Effect.succeed(null)),
-		)
-	}))
-}
-
-function RadiantLogo() {
-	return (
-		<h1 className={`${tomorrowFont.className} text-3xl font-bold tracking-tighter relative`}>
-			Radiant{" "}
-			<Image alt="logo wave icon" className="w-4 absolute -right-4 -top-0.5" src={waveIcon} />
-		</h1>
-	)
+function getOAuthProviders() {
+	return RadiantClient.use((client) => client.auth.listOAuthProviders())
 }
 
 export default async function LoginPage() {
-	const currentUser = await getCurrentUser()
-	if (currentUser != null) {
+	const [currentUser, providers] = await runServerEffect(Effect.all([ getCurrentUser(), getOAuthProviders() ], {concurrency: "unbounded"}))
+	if (Option.isSome(currentUser)) {
 		redirect("/dashboard")
 	}
 
-	const providers = await getOAuthProviders()
 
 	return (
 		<main className="min-h-screen bg-blue-50 px-4 py-8 sm:px-6 lg:px-8">
