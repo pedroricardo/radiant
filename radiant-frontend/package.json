@@ -8,13 +8,17 @@
     "start": "NEXT_MANUAL_SIG_HANDLE=true bun --bun next start"
   },
   "dependencies": {
+    "@effect/platform": "^0.94.5",
     "@radiant/backend": "workspace:*",
     "@radiant/client": "workspace:*",
+    "@radix-ui/react-slot": "^1.2.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "effect": "^3.19.19",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-		"@effect/platform": "^0.94.5",
-		"effect": "^3.19.19"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
