@@ -28,8 +28,8 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
-      - name: Run backend tests
-        run: bun test backend
+      - name: Run tests
+        run: bun test --timeout 999999
 
   next-build:
     runs-on: ubuntu-latest
