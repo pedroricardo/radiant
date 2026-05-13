@@ -10,6 +10,8 @@ const NodeIdParam = HttpApiSchema.param("nodeId", MediaNode.MediaNodeId)
 
 import { RadioManagerDatabaseError, RadioNotFound } from "../Radio/errors"
 
+const MediaLibraryNodeName = Schema.NonEmptyString.pipe(Schema.maxLength(255))
+
 export class MediaLibraryServiceError extends Schema.TaggedError<MediaLibraryServiceError>()(
 	"MediaLibraryServiceError",
 	{
@@ -82,7 +84,7 @@ export interface MediaLibraryTreeNode {
 
 export const MediaLibraryTreeNode: Schema.Schema<MediaLibraryTreeNode> = Schema.Struct({
 	id: MediaNode.MediaNodeId,
-	name: Schema.NonEmptyString,
+	name: MediaLibraryNodeName,
 	kind: MediaNode.MediaNodeKind,
 	children: Schema.Array(
 		Schema.suspend((): Schema.Schema<MediaLibraryTreeNode> => MediaLibraryTreeNode).annotations({
@@ -94,12 +96,12 @@ export const MediaLibraryTreeNode: Schema.Schema<MediaLibraryTreeNode> = Schema.
 
 export const CreateFolderInput = Schema.Struct({
 	parentId: Schema.NullOr(MediaNode.MediaNodeId),
-	name: Schema.NonEmptyString,
+	name: MediaLibraryNodeName,
 })
 export type CreateFolderInput = typeof CreateFolderInput.Type
 
 export const RenameNodeInput = Schema.Struct({
-	name: Schema.NonEmptyString,
+	name: MediaLibraryNodeName,
 })
 export type RenameNodeInput = typeof RenameNodeInput.Type
 
@@ -109,7 +111,7 @@ export const MoveNodeInput = Schema.Struct({
 export type MoveNodeInput = typeof MoveNodeInput.Type
 
 export const UploadFileUrlParams = Schema.Struct({
-	name: Schema.NonEmptyString,
+	name: MediaLibraryNodeName,
 	parentId: Schema.optional(MediaNode.MediaNodeId),
 })
 export type UploadFileUrlParams = typeof UploadFileUrlParams.Type

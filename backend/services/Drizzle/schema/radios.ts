@@ -1,5 +1,5 @@
 import { Radio } from "../../../lib"
-import { boolean, integer, pgTable, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core"
+import { boolean, integer, pgTable, timestamp, varchar } from "drizzle-orm/pg-core"
 
 import { DbSchema } from ".."
 import { userIdType, users } from "./user"
@@ -11,7 +11,6 @@ export const radios = pgTable(
 	{
 		id: radioIdType().primaryKey(),
 		name: varchar().notNull(),
-		slug: varchar().notNull(),
 		description: varchar(),
 		timezone: varchar().notNull(),
 		defaultCrossfadeMs: integer().notNull().default(0),
@@ -22,8 +21,4 @@ export const radios = pgTable(
 		createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
 	},
-	(radios) => [
-		uniqueIndex("radiosSlugIndex").on(radios.slug),
-		uniqueIndex("radiosNameIndex").on(radios.name),
-	],
 )

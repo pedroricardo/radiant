@@ -124,7 +124,7 @@ const authServiceLayer = AuthService.AuthService.Default.pipe(
 	Layer.provide(userRepoLayer),
 )
 const oauthStateCheckerLayer = OAuth.layerDrizzle.pipe(Layer.provide(dbLayer))
-const radioManagerLayer = RadioManager.RadioManager.Default
+const radioManagerLayer = RadioManager.RadioManager.Default.pipe(Layer.provide(dbLayer))
 
 const makeSilentWav = (durationMs: number) => {
 	const sampleRate = 44_100
@@ -165,7 +165,6 @@ const seedRadio = (userId: `user_${string}`) =>
 				db.insert(radios).values({
 					id: radioId,
 					name: "Test Radio",
-					slug: "test-radio",
 					timezone: "Europe/Lisbon",
 					createdByUserId: userId,
 				}),

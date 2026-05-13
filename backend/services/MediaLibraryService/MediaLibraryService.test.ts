@@ -161,7 +161,6 @@ const seedRadio = () =>
 				await db.insert(radios).values({
 					id: radioId,
 					name: "Test Radio",
-					slug: "test-radio",
 					timezone: "Europe/Lisbon",
 					createdByUserId: userId,
 				})

@@ -11,7 +11,6 @@ import * as RadioStream from "./RadioStream"
 
 type CreateRadioInput = {
 	name: string
-	slug: string
 	description?: string | null
 	timezone: string
 	defaultCrossfadeMs?: number
@@ -21,7 +20,6 @@ type CreateRadioInput = {
 
 type UpdateRadioInput = {
 	name?: string
-	slug?: string
 	description?: string | null
 	timezone?: string
 	defaultCrossfadeMs?: number
@@ -92,7 +90,6 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 							.values({
 								id: radioId,
 								name: input.name,
-								slug: input.slug,
 								description: input.description ?? null,
 								timezone: input.timezone,
 								defaultCrossfadeMs: input.defaultCrossfadeMs ?? 0,

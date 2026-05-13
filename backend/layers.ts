@@ -40,7 +40,10 @@ const authServiceLayer = AuthService.Default.pipe(
 
 const oauthStateLayer = oauthStateCheckerLayer.pipe(Layer.provideMerge(dbLayer))
 
-const radioManagerLayer = RadioManager.layer.pipe(Layer.provideMerge(IcyEncoder.layer))
+const radioManagerLayer = RadioManager.layer.pipe(
+	Layer.provideMerge(IcyEncoder.layer),
+	Layer.provideMerge(dbLayer),
+)
 const storageServiceLayer = StorageService.LocalDiskStorageService.pipe(
 	Layer.provideMerge(HttpServer.layerContext),
 )

@@ -8,13 +8,15 @@ import * as IcyEncoderErrors from "../IcyEncoderErrors"
 import { Authorization } from "../Auth"
 
 const RadioIdParam = HttpApiSchema.param("radioId", RadioId)
+const RadioName = Schema.NonEmptyString.pipe(Schema.maxLength(120))
+const RadioDescription = Schema.NullOr(Schema.String.pipe(Schema.maxLength(2_000)))
+const RadioTimezone = Schema.NonEmptyString.pipe(Schema.maxLength(100))
 
 export const RadioInfo = Schema.Struct({
 	id: RadioId,
-	name: Schema.String,
-	slug: Schema.String,
-	description: Schema.NullOr(Schema.String),
-	timezone: Schema.String,
+	name: RadioName,
+	description: RadioDescription,
+	timezone: RadioTimezone,
 	defaultCrossfadeMs: Schema.Number,
 	isPublic: Schema.Boolean,
 	createdByUserId: Schema.String,
@@ -23,20 +25,18 @@ export const RadioInfo = Schema.Struct({
 })
 
 export const CreateRadioRequest = Schema.Struct({
-	name: Schema.String,
-	slug: Schema.String,
-	description: Schema.optional(Schema.NullOr(Schema.String)),
-	timezone: Schema.String,
+	name: RadioName,
+	description: Schema.optional(RadioDescription),
+	timezone: RadioTimezone,
 	defaultCrossfadeMs: Schema.optional(Schema.Number),
 	isPublic: Schema.optional(Schema.Boolean),
 })
 
 export const UpdateRadioRequest = Schema.partial(
 	Schema.Struct({
-		name: Schema.String,
-		slug: Schema.String,
-		description: Schema.NullOr(Schema.String),
-		timezone: Schema.String,
+		name: RadioName,
+		description: RadioDescription,
+		timezone: RadioTimezone,
 		defaultCrossfadeMs: Schema.Number,
 		isPublic: Schema.Boolean,
 	}),

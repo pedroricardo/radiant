@@ -1,0 +1,3 @@
+DROP INDEX IF EXISTS "radiosSlugIndex";
+DROP INDEX IF EXISTS "radiosNameIndex";
+ALTER TABLE "radios" DROP COLUMN IF EXISTS "slug";
