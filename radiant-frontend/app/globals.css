@@ -76,6 +76,7 @@
   --shadow-neo-badge: 4px 4px 0 0 #000;
   --shadow-neo-button-light: 8px 8px 0 0 #fff;
   --shadow-neo-button-accent: 8px 8px 0 0 #ff8f3f;
+  --shadow-neo-button-accent-hover: 12px 12px 0 0 #000;
   --shadow-neo-button-dark: 6px 6px 0 0 #ff8f3f;
 
   --shadow-panel: var(--shadow-neo-panel);
@@ -168,4 +169,7 @@ a {
 .preview-slider--vertical::-moz-range-thumb {
   width: 18px;
   height: 18px;
+}
+img {
+	user-select: none;
 }

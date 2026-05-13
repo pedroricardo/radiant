@@ -1,5 +1,3 @@
-import { PropsWithChildren } from "react"
-
 import { groteskFont, tomorrowFont } from "../../lib/fonts"
 import { StatusPill } from "./StatusPill"
 

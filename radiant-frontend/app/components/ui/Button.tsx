@@ -8,7 +8,7 @@ import { groteskFont } from "../../lib/fonts"
 import { cn } from "../../lib/utils"
 
 const buttonVariants = cva(
-	`inline-flex items-center justify-center border-black text-sm font-bold tracking-tight text-black transition-all active:translate-1 active:rounded-sm active:border-transparent disabled:pointer-events-none disabled:opacity-50 ${groteskFont.className}`,
+	`inline-flex items-center justify-center border-black text-sm font-bold cursor-pointer tracking-tight text-black transition-all active:translate-1 active:rounded-sm active:border-transparent disabled:pointer-events-none disabled:opacity-50 focus:outline-none  not-active:hover:shadow-neo-button-accent-hover not-active:hover:-translate-1 not-active:focus-visible:shadow-neo-button-accent-hover not-active:focus-visible:-translate-1 not-active:focus-visible:brightness-90 ${groteskFont.className}`,
 	{
 		variants: {
 			variant: {

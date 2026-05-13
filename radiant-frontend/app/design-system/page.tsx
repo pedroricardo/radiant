@@ -1,17 +1,18 @@
 "use client"
 
+import { notFound } from "next/navigation"
 import matsuriCover from "../assets/まつり-foto.png"
 import { RadiantLogo } from "../components/RadiantLogo"
-import { PreviewCard } from "../components/dashboard/PreviewCard"
-import { HealthPanel } from "../components/dashboard/HealthPanel"
-import { LibrarySnapshotPanel } from "../components/dashboard/LibrarySnapshotPanel"
-import { PageHeader } from "../components/dashboard/PageHeader"
-import { Panel } from "../components/dashboard/Panel"
-import { PanelGrid } from "../components/dashboard/PanelGrid"
-import { QuickActionsPanel } from "../components/dashboard/QuickActionsPanel"
-import { ScheduleMiniPanel } from "../components/dashboard/ScheduleMiniPanel"
-import { StatusPill } from "../components/dashboard/StatusPill"
-import { UpcomingPanel } from "../components/dashboard/UpcomingPanel"
+import { PreviewCard } from "../components/design-system/PreviewCard"
+import { HealthPanel } from "../components/design-system/HealthPanel"
+import { LibrarySnapshotPanel } from "../components/design-system/LibrarySnapshotPanel"
+import { PageHeader } from "../components/design-system/PageHeader"
+import { Panel } from "../components/design-system/Panel"
+import { PanelGrid } from "../components/design-system/PanelGrid"
+import { QuickActionsPanel } from "../components/design-system/QuickActionsPanel"
+import { ScheduleMiniPanel } from "../components/design-system/ScheduleMiniPanel"
+import { StatusPill } from "../components/design-system/StatusPill"
+import { UpcomingPanel } from "../components/design-system/UpcomingPanel"
 import { Badge } from "../components/ui/Badge"
 import { Button } from "../components/ui/Button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/Card"
@@ -34,6 +35,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../com
 import { VerticalSlider } from "../components/ui/VerticalSlider"
 import { groteskFont, tomorrowFont } from "../lib/fonts"
 
+const isDesignSystemEnabled = process.env.NEXT_PUBLIC_ENABLE_DESIGN_SYSTEM === "true"
+
 function SectionTitle(props: { title: string; description: string }) {
 	return (
 		<div className="mb-4">
@@ -51,6 +54,10 @@ function SectionTitle(props: { title: string; description: string }) {
 }
 
 export default function DesignSystemPage() {
+	if (!isDesignSystemEnabled) {
+		notFound()
+	}
+
 	return (
 		<TooltipProvider delayDuration={150}>
 			<main className="min-h-screen bg-canvas">

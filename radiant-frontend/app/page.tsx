@@ -9,7 +9,7 @@ import { Button } from "./components/ui/Button";
 import { RadiantLogo } from "./components/RadiantLogo";
 import { HeroCopy } from "./components/home/HeroCopy";
 import { FeatureStatsRow } from "./components/home/FeatureStatsRow";
-import { PreviewCard } from "./components/dashboard/PreviewCard";
+import { PreviewCard } from "./components/design-system/PreviewCard";
 import { getCurrentUser } from "./lib/auth";
 import { runServerEffect } from "./lib/serverApiClient";
 

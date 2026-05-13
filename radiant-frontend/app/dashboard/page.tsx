@@ -1,56 +1,59 @@
+import { RadiantClient } from "@radiant/client"
 import { Option } from "effect"
 import { redirect } from "next/navigation"
 
-import { Panel } from "../components/dashboard/Panel"
-import { PageHeader } from "../components/dashboard/PageHeader"
-import { PanelGrid } from "../components/dashboard/PanelGrid"
-import { SidebarNav } from "../components/dashboard/SidebarNav"
-import { TopBar } from "../components/dashboard/TopBar"
-import { Button } from "../components/ui/Button"
-import { Skeleton } from "../components/ui/Skeleton"
 import { getCurrentUser } from "../lib/auth"
 import { runServerEffect } from "../lib/serverApiClient"
-
-function DashboardSkeletonPanel(props: {
-	title: string
-	kicker?: string
-	className?: string
-	lines?: number
-}) {
-	return (
-		<Panel title={props.title} kicker={props.kicker} className={props.className}>
-			<div className="space-y-3">
-				{Array.from({ length: props.lines ?? 4 }, (_, index) => (
-					<Skeleton
-						key={`${props.title}-${index}`}
-						className={index === 0 ? "h-10 w-2/3" : index === (props.lines ?? 4) - 1 ? "h-4 w-1/3" : "h-4 w-full"}
-					/>
-				))}
-			</div>
-		</Panel>
-	)
-}
+import { groteskFont, tomorrowFont } from "../lib/fonts"
+import { Badge } from "../components/ui/Badge"
+import { Button } from "../components/ui/Button"
+import { DashboardShell } from "../components/dashboard/DashboardShell"
+import { RadioTile } from "../components/dashboard/RadioTile"
 
 export default async function DashboardPage() {
 	const user = await runServerEffect(getCurrentUser())
+
 	if (Option.isNone(user)) {
 		redirect("/login")
 	}
 
+	const radios = await runServerEffect(RadiantClient.use((client) => client.radio.list()))
+
 	return (
-		<main className="min-h-screen bg-canvas">
-			<TopBar username={user.value.username} avatarUrl={user.value.avatarUrl ?? undefined} />
-			<div className="grid min-h-[calc(100vh-5.25rem)] lg:grid-cols-[18rem_minmax(0,1fr)]">
-				<div className="hidden lg:block">
-					<SidebarNav />
+		<DashboardShell user={user.value}>
+			<div className="relative mx-auto flex min-h-full w-full max-w-5xl flex-col items-center justify-center px-6 py-10">
+				<div className="flex flex-col items-center gap-4 text-center">
+					<Badge variant="orange">Dashboard</Badge>
+
+					<h1
+						className={`select-none text-center text-4xl tracking-tight text-neo-black sm:text-5xl ${tomorrowFont.className}`}
+					>
+						Selecione um Rádio
+					</h1>
+
+					<p
+						className={`max-w-xl select-none text-sm font-bold tracking-tight text-black/65 sm:text-base ${groteskFont.className}`}
+					>
+						Escolhe uma estação para abrir o console, acompanhar a automação e gerir a library.
+					</p>
 				</div>
 
-				<div className="min-w-0">
+				<div className="mt-12 flex flex-wrap items-start justify-center gap-8">
+					{radios.map((radio) => (
+						<RadioTile key={radio.id} id={radio.id} name={radio.name} />
+					))}
+				</div>
 
-					<div className="p-4 sm:p-6">
+				{radios.length === 0 ? (
+					<div className="mt-12 flex flex-col items-center gap-4 border-3 border-neo-black bg-neo-paper px-6 py-6 shadow-neo-badge">
+						<p className={`select-none text-center text-base text-black/70 ${groteskFont.className}`}>
+							Ainda não tens rádios. Cria a primeira estação para começar.
+						</p>
+
+						<Button variant="default">Criar rádio</Button>
 					</div>
-				</div>
+				) : null}
 			</div>
-		</main>
+		</DashboardShell>
 	)
 }

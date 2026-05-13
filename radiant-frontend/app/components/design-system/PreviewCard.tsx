@@ -1,10 +1,11 @@
-import { CoverArt } from "../ui/CoverArt"
-import { Card, CardContent, CardFooter, CardHeader } from "../ui/Card"
-import { Badge } from "../ui/Badge"
-import { groteskFont, tomorrowFont } from "../../lib/fonts"
-import { PreviewVolumeControl } from "../PreviewVolumeControl"
 import { StaticImageData } from "next/image"
+
+import { groteskFont, tomorrowFont } from "../../lib/fonts"
 import { cn } from "../../lib/utils"
+import { PreviewVolumeControl } from "../PreviewVolumeControl"
+import { Badge } from "../ui/Badge"
+import { Card, CardContent, CardFooter, CardHeader } from "../ui/Card"
+import { CoverArt } from "../ui/CoverArt"
 
 export type PreviewCardData = {
 	title: string
