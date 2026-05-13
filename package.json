@@ -8,13 +8,14 @@
 		"radiant-frontend"
 	],
 	"scripts": {
-		"add-test-migration": "bun --bun drizzle-kit generate --out ./backend/test/db --dialect postgresql --schema ./backend/services/Drizzle/schema/",
+		"add-test-migration": "bun --env-file=radiant-frontend/.env --bun drizzle-kit generate --config backend/drizzle.config.ts",
+		"db:push": "bun --env-file=radiant-frontend/.env --bun drizzle-kit push --config backend/drizzle.config.ts",
 		"build": "bun run --cwd radiant-frontend build",
 		"dev": "bun run --cwd radiant-frontend dev",
 		"start": "bun run --cwd radiant-frontend start",
 		"typecheck": "bun run typecheck:backend && bun run typecheck:frontend",
 		"typecheck:backend": "bunx tsc --noEmit -p backend/tsconfig.json",
-		"typecheck:frontend": "bunx tsc --noEmit -p radiant-frontend/tsconfig.json"
+		"typecheck:frontend": "bunx tsc --noEmit -p radiant-frontend/tsconfig.json",
 	},
 	"devDependencies": {
 		"drizzle-kit": "^0.31.9",
