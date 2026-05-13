@@ -1,14 +1,83 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 import { RadioId } from "."
-import * as Errors from "./errors";
+import * as Errors from "./errors"
 import * as AudioMultiplexerErrors from "../AudioMultiplexerErrors"
 import * as AudioSourceErrors from "../AudioSourceErrors"
 import * as IcyEncoderErrors from "../IcyEncoderErrors"
+import { Authorization } from "../Auth"
 
 const RadioIdParam = HttpApiSchema.param("radioId", RadioId)
 
+export const RadioInfo = Schema.Struct({
+	id: RadioId,
+	name: Schema.String,
+	slug: Schema.String,
+	description: Schema.NullOr(Schema.String),
+	timezone: Schema.String,
+	defaultCrossfadeMs: Schema.Number,
+	isPublic: Schema.Boolean,
+	createdByUserId: Schema.String,
+	createdAt: Schema.DateFromString,
+	updatedAt: Schema.DateFromString,
+})
+
+export const CreateRadioRequest = Schema.Struct({
+	name: Schema.String,
+	slug: Schema.String,
+	description: Schema.optional(Schema.NullOr(Schema.String)),
+	timezone: Schema.String,
+	defaultCrossfadeMs: Schema.optional(Schema.Number),
+	isPublic: Schema.optional(Schema.Boolean),
+})
+
+export const UpdateRadioRequest = Schema.partial(
+	Schema.Struct({
+		name: Schema.String,
+		slug: Schema.String,
+		description: Schema.NullOr(Schema.String),
+		timezone: Schema.String,
+		defaultCrossfadeMs: Schema.Number,
+		isPublic: Schema.Boolean,
+	}),
+)
+
 export const radioGroup = HttpApiGroup.make("radio")
+	.add(
+		HttpApiEndpoint.get("list")`/`
+			.addSuccess(Schema.Array(RadioInfo))
+			.addError(Errors.RadioManagerDatabaseError)
+			.middleware(Authorization)
+	)
+	.add(
+		HttpApiEndpoint.post("create")`/`
+			.setPayload(CreateRadioRequest)
+			.addSuccess(RadioInfo)
+			.middleware(Authorization)
+			.addError(Errors.RadioManagerDatabaseError),
+	)
+	.add(
+		HttpApiEndpoint.get("get")`/${RadioIdParam}`
+			.addSuccess(RadioInfo)
+			.middleware(Authorization)
+			.addError(Errors.RadioNotFound)
+			.addError(Errors.RadioManagerDatabaseError),
+	)
+	.add(
+		HttpApiEndpoint.patch("update")`/${RadioIdParam}`
+			.middleware(Authorization)
+			.setPayload(UpdateRadioRequest)
+			.addSuccess(RadioInfo)
+			.addError(Errors.RadioNotFound)
+			.addError(Errors.RadioManagerDatabaseError),
+	)
+	.add(
+		HttpApiEndpoint.del("delete")`/${RadioIdParam}`
+			.middleware(Authorization)
+			.addSuccess(Schema.Void)
+			.addError(Errors.RadioNotFound)
+			.addError(Errors.RadioManagerDatabaseError),
+	)
 	.add(
 		HttpApiEndpoint.get("listen")`/${RadioIdParam}/listen`
 			.addSuccess(

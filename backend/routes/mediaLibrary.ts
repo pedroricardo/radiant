@@ -1,13 +1,18 @@
 import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import * as RadiantClient from "@radiant/client"
+import { CurrentUser } from "@radiant/client/contract"
 import { Effect } from "effect"
 
-import {
-	MediaLibraryInvalidMoveError,
-	MediaLibraryNameConflictError,
-	MediaLibraryNodeNotFoundError,
-	MediaLibraryService,
-} from "../services/MediaLibraryService"
+import { MediaLibraryService } from "../services/MediaLibraryService"
+import { RadioManager } from "../services"
+
+const ensureRadioOwner = Effect.fn("http.mediaLibrary.ensureRadioOwner")(function* (
+	radioId: RadiantClient.Radio.RadioId,
+) {
+	const radioManager = yield* RadioManager.RadioManager
+	const userId = yield* CurrentUser
+	yield* radioManager.getUserRadioInfo(userId, radioId)
+})
 
 export const mediaLibraryGroupLive = HttpApiBuilder.group(
 	RadiantClient.ApiContract.httpApi,
@@ -17,9 +22,11 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 			.handle(
 				"getTree",
 				Effect.fn("http.mediaLibrary.getTree")(function* ({ path: { radioId } }) {
+					yield* ensureRadioOwner(radioId)
+
 					const mediaLibrary = yield* MediaLibraryService
 					return yield* mediaLibrary.getTree(radioId)
-				}, Effect.orDie),
+				}),
 			)
 			.handle(
 				"uploadFile",
@@ -27,8 +34,11 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 					path: { radioId },
 					urlParams,
 				}) {
+					yield* ensureRadioOwner(radioId)
+
 					const mediaLibrary = yield* MediaLibraryService
 					const request = yield* HttpServerRequest.HttpServerRequest
+
 					return yield* mediaLibrary
 						.uploadAudioFile({
 							radioId,
@@ -37,43 +47,15 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 							contentType: request.headers["content-type"],
 							content: request.stream,
 						})
-						.pipe(
-							Effect.catchTag(
-								"MediaLibraryNodeNotFoundError",
-								() => new RadiantClient.MediaLibrary.MediaLibraryNodeNotFound(),
-							),
-							Effect.catchTag(
-								"MediaLibraryNameConflictError",
-								(error) => new RadiantClient.MediaLibrary.MediaLibraryNameConflict({ name: error.name }),
-							),
-							Effect.catchTag(
-								"MediaLibraryInvalidMoveError",
-								(error) => new RadiantClient.MediaLibrary.MediaLibraryInvalidMove({ message: error.message }),
-							),
-							Effect.catchTag(
-								"MediaLibraryInvalidAudioFileError",
-								(error) =>
-									new RadiantClient.MediaLibrary.MediaLibraryInvalidAudioFile({
-										message: error.message,
-									}),
-							),
-						)
-				}, Effect.orDie),
+				}),
 			)
 			.handle(
 				"getCoverArt",
 				Effect.fn("http.mediaLibrary.getCoverArt")(function* ({ path: { radioId, nodeId } }) {
+					yield* ensureRadioOwner(radioId)
+
 					const mediaLibrary = yield* MediaLibraryService
-					const coverArt = yield* mediaLibrary.getCoverArt({ radioId, nodeId }).pipe(
-						Effect.catchTag(
-							"MediaLibraryNodeNotFoundError",
-							() => new RadiantClient.MediaLibrary.MediaLibraryNodeNotFound(),
-						),
-						Effect.catchTag(
-							"MediaLibraryCoverArtNotFoundError",
-							() => new RadiantClient.MediaLibrary.MediaLibraryCoverArtNotFound(),
-						),
-					)
+					const coverArt = yield* mediaLibrary.getCoverArt({ radioId, nodeId })
 
 					return HttpServerResponse.stream(coverArt.content, {
 						contentType: coverArt.contentType,
@@ -81,7 +63,7 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 							"cache-control": "public, max-age=3600",
 						},
 					})
-				}, Effect.orDie),
+				}),
 			)
 			.handle(
 				"createFolder",
@@ -89,26 +71,15 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 					path: { radioId },
 					payload,
 				}) {
+					yield* ensureRadioOwner(radioId)
+
 					const mediaLibrary = yield* MediaLibraryService
 					return yield* mediaLibrary.createFolder({
 						radioId,
 						parentId: payload.parentId,
 						name: payload.name,
-					}).pipe(
-						Effect.catchTag(
-							"MediaLibraryNodeNotFoundError",
-							() => new RadiantClient.MediaLibrary.MediaLibraryNodeNotFound(),
-						),
-						Effect.catchTag(
-							"MediaLibraryNameConflictError",
-							(error) => new RadiantClient.MediaLibrary.MediaLibraryNameConflict({ name: error.name }),
-						),
-						Effect.catchTag(
-							"MediaLibraryInvalidMoveError",
-							(error) => new RadiantClient.MediaLibrary.MediaLibraryInvalidMove({ message: error.message }),
-						),
-					)
-				}, Effect.orDie),
+					})
+				}),
 			)
 			.handle(
 				"renameNode",
@@ -116,22 +87,15 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 					path: { radioId, nodeId },
 					payload,
 				}) {
+					yield* ensureRadioOwner(radioId)
+
 					const mediaLibrary = yield* MediaLibraryService
 					return yield* mediaLibrary.renameNode({
 						radioId,
 						nodeId,
 						name: payload.name,
-					}).pipe(
-						Effect.catchTag(
-							"MediaLibraryNodeNotFoundError",
-							() => new RadiantClient.MediaLibrary.MediaLibraryNodeNotFound(),
-						),
-						Effect.catchTag(
-							"MediaLibraryNameConflictError",
-							(error) => new RadiantClient.MediaLibrary.MediaLibraryNameConflict({ name: error.name }),
-						),
-					)
-				}, Effect.orDie),
+					})
+				}),
 			)
 			.handle(
 				"moveNode",
@@ -139,40 +103,26 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 					path: { radioId, nodeId },
 					payload,
 				}) {
+					yield* ensureRadioOwner(radioId)
+
 					const mediaLibrary = yield* MediaLibraryService
 					return yield* mediaLibrary.moveNode({
 						radioId,
 						nodeId,
 						parentId: payload.parentId,
-					}).pipe(
-						Effect.catchTag(
-							"MediaLibraryNodeNotFoundError",
-							() => new RadiantClient.MediaLibrary.MediaLibraryNodeNotFound(),
-						),
-						Effect.catchTag(
-							"MediaLibraryNameConflictError",
-							(error) => new RadiantClient.MediaLibrary.MediaLibraryNameConflict({ name: error.name }),
-						),
-						Effect.catchTag(
-							"MediaLibraryInvalidMoveError",
-							(error) => new RadiantClient.MediaLibrary.MediaLibraryInvalidMove({ message: error.message }),
-						),
-					)
-				}, Effect.orDie),
+					})
+				}),
 			)
 			.handle(
 				"deleteNode",
 				Effect.fn("http.mediaLibrary.deleteNode")(function* ({ path: { radioId, nodeId } }) {
+					yield* ensureRadioOwner(radioId)
+
 					const mediaLibrary = yield* MediaLibraryService
 					return yield* mediaLibrary.deleteNode({
 						radioId,
 						nodeId,
-					}).pipe(
-						Effect.catchTag(
-							"MediaLibraryNodeNotFoundError",
-							() => new RadiantClient.MediaLibrary.MediaLibraryNodeNotFound(),
-						),
-					)
-				}, Effect.orDie),
+					})
+				}),
 			),
 )

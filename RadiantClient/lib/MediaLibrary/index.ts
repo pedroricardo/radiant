@@ -8,34 +8,69 @@ import * as Radio from "../Radio"
 const RadioIdParam = HttpApiSchema.param("radioId", Radio.RadioId)
 const NodeIdParam = HttpApiSchema.param("nodeId", MediaNode.MediaNodeId)
 
-export class MediaLibraryNodeNotFound extends Schema.TaggedError<MediaLibraryNodeNotFound>()(
-	"MediaLibraryNodeNotFound",
-	{},
-	HttpApiSchema.annotations({ status: 404 }),
+import { RadioManagerDatabaseError, RadioNotFound } from "../Radio/errors"
+
+export class MediaLibraryServiceError extends Schema.TaggedError<MediaLibraryServiceError>()(
+	"MediaLibraryServiceError",
+	{
+		cause: Schema.Unknown,
+		message: Schema.String,
+	},
+	HttpApiSchema.annotations({
+		status: 500,
+	}),
 ) {}
 
-export class MediaLibraryNameConflict extends Schema.TaggedError<MediaLibraryNameConflict>()(
-	"MediaLibraryNameConflict",
-	{ name: Schema.String },
-	HttpApiSchema.annotations({ status: 409 }),
+export class MediaLibraryNodeNotFoundError extends Schema.TaggedError<MediaLibraryNodeNotFoundError>()(
+	"MediaLibraryNodeNotFoundError",
+	{
+		radioId: Radio.RadioId,
+		nodeId: MediaNode.MediaNodeId,
+	},
+	HttpApiSchema.annotations({
+		status: 404,
+	}),
 ) {}
 
-export class MediaLibraryInvalidMove extends Schema.TaggedError<MediaLibraryInvalidMove>()(
-	"MediaLibraryInvalidMove",
-	{ message: Schema.String },
-	HttpApiSchema.annotations({ status: 400 }),
+export class MediaLibraryNameConflictError extends Schema.TaggedError<MediaLibraryNameConflictError>()(
+	"MediaLibraryNameConflictError",
+	{
+		name: Schema.String,
+	},
+	HttpApiSchema.annotations({
+		status: 409,
+	}),
 ) {}
 
-export class MediaLibraryInvalidAudioFile extends Schema.TaggedError<MediaLibraryInvalidAudioFile>()(
-	"MediaLibraryInvalidAudioFile",
-	{ message: Schema.String },
-	HttpApiSchema.annotations({ status: 400 }),
+export class MediaLibraryInvalidMoveError extends Schema.TaggedError<MediaLibraryInvalidMoveError>()(
+	"MediaLibraryInvalidMoveError",
+	{
+		message: Schema.String,
+	},
+	HttpApiSchema.annotations({
+		status: 400,
+	}),
 ) {}
 
-export class MediaLibraryCoverArtNotFound extends Schema.TaggedError<MediaLibraryCoverArtNotFound>()(
-	"MediaLibraryCoverArtNotFound",
-	{},
-	HttpApiSchema.annotations({ status: 404 }),
+export class MediaLibraryInvalidAudioFileError extends Schema.TaggedError<MediaLibraryInvalidAudioFileError>()(
+	"MediaLibraryInvalidAudioFileError",
+	{
+		message: Schema.String,
+	},
+	HttpApiSchema.annotations({
+		status: 400,
+	}),
+) {}
+
+export class MediaLibraryCoverArtNotFoundError extends Schema.TaggedError<MediaLibraryCoverArtNotFoundError>()(
+	"MediaLibraryCoverArtNotFoundError",
+	{
+		radioId: Radio.RadioId,
+		nodeId: MediaNode.MediaNodeId,
+	},
+	HttpApiSchema.annotations({
+		status: 404,
+	}),
 ) {}
 
 export interface MediaLibraryTreeNode {
@@ -83,16 +118,22 @@ export const mediaLibraryGroup = HttpApiGroup.make("mediaLibrary")
 	.add(
 		HttpApiEndpoint.get("getTree")`/radios/${RadioIdParam}/media-library/tree`
 			.addSuccess(Schema.Array(MediaLibraryTreeNode))
+			.addError(MediaLibraryServiceError)
+			.addError(RadioManagerDatabaseError)
+			.addError(RadioNotFound)
 			.middleware(Authorization),
 	)
 	.add(
 		HttpApiEndpoint.post("uploadFile")`/radios/${RadioIdParam}/media-library/files`
 			.setUrlParams(UploadFileUrlParams)
 			.addSuccess(MediaNode.MediaNode)
-			.addError(MediaLibraryNodeNotFound)
-			.addError(MediaLibraryNameConflict)
-			.addError(MediaLibraryInvalidMove)
-			.addError(MediaLibraryInvalidAudioFile)
+			.addError(MediaLibraryNodeNotFoundError)
+			.addError(MediaLibraryNameConflictError)
+			.addError(MediaLibraryInvalidMoveError)
+			.addError(MediaLibraryInvalidAudioFileError)
+			.addError(MediaLibraryServiceError)
+			.addError(RadioManagerDatabaseError)
+			.addError(RadioNotFound)
 			.middleware(Authorization),
 	)
 	.add(
@@ -105,39 +146,54 @@ export const mediaLibraryGroup = HttpApiGroup.make("mediaLibrary")
 					}),
 				),
 			)
-			.addError(MediaLibraryNodeNotFound)
-			.addError(MediaLibraryCoverArtNotFound)
+			.addError(MediaLibraryNodeNotFoundError)
+			.addError(MediaLibraryCoverArtNotFoundError)
+			.addError(MediaLibraryServiceError)
+			.addError(RadioManagerDatabaseError)
+			.addError(RadioNotFound)
 			.middleware(Authorization),
 	)
 	.add(
 		HttpApiEndpoint.post("createFolder")`/radios/${RadioIdParam}/media-library/folders`
 			.setPayload(CreateFolderInput)
 			.addSuccess(MediaNode.MediaNode)
-			.addError(MediaLibraryNodeNotFound)
-			.addError(MediaLibraryNameConflict)
-			.addError(MediaLibraryInvalidMove)
+			.addError(MediaLibraryServiceError)
+			.addError(MediaLibraryNodeNotFoundError)
+			.addError(MediaLibraryNameConflictError)
+			.addError(MediaLibraryInvalidMoveError)
+			.addError(RadioManagerDatabaseError)
+			.addError(RadioNotFound)
 			.middleware(Authorization),
 	)
 	.add(
 		HttpApiEndpoint.patch("renameNode")`/radios/${RadioIdParam}/media-library/nodes/${NodeIdParam}/name`
 			.setPayload(RenameNodeInput)
 			.addSuccess(MediaNode.MediaNode)
-			.addError(MediaLibraryNodeNotFound)
-			.addError(MediaLibraryNameConflict)
+			.addError(MediaLibraryNodeNotFoundError)
+			.addError(MediaLibraryNameConflictError)
+			.addError(MediaLibraryServiceError)
+			.addError(RadioManagerDatabaseError)
+			.addError(RadioNotFound)
 			.middleware(Authorization),
 	)
 	.add(
 		HttpApiEndpoint.patch("moveNode")`/radios/${RadioIdParam}/media-library/nodes/${NodeIdParam}/parent`
 			.setPayload(MoveNodeInput)
 			.addSuccess(MediaNode.MediaNode)
-			.addError(MediaLibraryNodeNotFound)
-			.addError(MediaLibraryNameConflict)
-			.addError(MediaLibraryInvalidMove)
+			.addError(MediaLibraryNodeNotFoundError)
+			.addError(MediaLibraryNameConflictError)
+			.addError(MediaLibraryInvalidMoveError)
+			.addError(RadioManagerDatabaseError)
+			.addError(MediaLibraryServiceError)
+			.addError(RadioNotFound)
 			.middleware(Authorization),
 	)
 	.add(
 		HttpApiEndpoint.del("deleteNode")`/radios/${RadioIdParam}/media-library/nodes/${NodeIdParam}`
 			.addSuccess(Schema.Void)
-			.addError(MediaLibraryNodeNotFound)
+			.addError(MediaLibraryNodeNotFoundError)
+			.addError(MediaLibraryServiceError)
+			.addError(RadioManagerDatabaseError)
+			.addError(RadioNotFound)
 			.middleware(Authorization),
 	)

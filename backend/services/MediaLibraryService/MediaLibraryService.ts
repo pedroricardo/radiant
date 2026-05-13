@@ -8,6 +8,7 @@ import { mediaNodeAudioMetadata } from "../Drizzle/schema/mediaNodeAudioMetadata
 import { mediaNodes } from "../Drizzle/schema/mediaNodes"
 import { MetadataExtractionService } from "../MetadataExtractionService"
 import { StorageService, StorageServiceError } from "../StorageService"
+import { MediaLibraryCoverArtNotFoundError, MediaLibraryInvalidAudioFileError, MediaLibraryInvalidMoveError, MediaLibraryNameConflictError, MediaLibraryNodeNotFoundError, MediaLibraryServiceError } from "@radiant/client/lib/MediaLibrary"
 
 type DbMediaNode = typeof mediaNodes.$inferSelect
 type DbMediaNodeAudioMetadata = typeof mediaNodeAudioMetadata.$inferSelect
@@ -16,36 +17,6 @@ type DbMediaNodeRow = {
 	readonly media_node_audio_metadata: DbMediaNodeAudioMetadata | null
 }
 
-export class MediaLibraryServiceError extends Data.TaggedError("MediaLibraryServiceError")<{
-	cause: unknown
-	message: string
-}> {}
-
-export class MediaLibraryNodeNotFoundError extends Data.TaggedError("MediaLibraryNodeNotFoundError")<{
-	radioId: Radio.RadioId
-	nodeId: MediaNode.MediaNodeId
-}> {}
-
-export class MediaLibraryNameConflictError extends Data.TaggedError("MediaLibraryNameConflictError")<{
-	name: string
-}> {}
-
-export class MediaLibraryInvalidMoveError extends Data.TaggedError("MediaLibraryInvalidMoveError")<{
-	message: string
-}> {}
-
-export class MediaLibraryInvalidAudioFileError extends Data.TaggedError(
-	"MediaLibraryInvalidAudioFileError",
-)<{
-	message: string
-}> {}
-
-export class MediaLibraryCoverArtNotFoundError extends Data.TaggedError(
-	"MediaLibraryCoverArtNotFoundError",
-)<{
-	radioId: Radio.RadioId
-	nodeId: MediaNode.MediaNodeId
-}> {}
 
 const staticTree: ReadonlyArray<MediaLibrary.MediaLibraryTreeNode> = [
 	{
