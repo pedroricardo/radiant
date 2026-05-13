@@ -1,5 +1,8 @@
 import { User } from "../../lib"
 import { Drizzle } from "../Drizzle"
+import { mediaNodeAudioMetadata } from "../Drizzle/schema/mediaNodeAudioMetadata"
+import { mediaNodes } from "../Drizzle/schema/mediaNodes"
+import { radios } from "../Drizzle/schema/radios"
 import { users as usersTable } from "../Drizzle/schema/user"
 import { eq } from "drizzle-orm"
 import { Data, DateTime, Effect, Option } from "effect"
@@ -89,6 +92,57 @@ export class UserRepository extends Effect.Service<UserRepository>()("UserReposi
 					Effect.withSpan("UserRepository.createUser", {
 						attributes: { hasEmail: user.email != null },
 					}),
+				),
+			getStorageInfo: (userId: User.UserId) =>
+				Effect.gen(function* () {
+					yield* Effect.logDebug("db.users.getStorageInfo")
+
+					const defaultStorageQuotaBytes = BigInt(
+						Bun.env.RADIANT_DEFAULT_STORAGE_QUOTA_BYTES ?? "5000000000",
+					)
+
+					const quotaRows = yield* Effect.tryPromise({
+						try: () =>
+							db
+								.select({ storageQuotaBytes: usersTable.storageQuotaBytes })
+								.from(usersTable)
+								.where(eq(usersTable.id, userId)),
+						catch: (cause) =>
+							new UserRepositoryError({
+								cause,
+								message: "failed to query user storage quota",
+							}),
+					})
+
+					const usedRows = yield* Effect.tryPromise({
+						try: () =>
+							db
+								.select({ sizeBytes: mediaNodeAudioMetadata.sizeBytes })
+								.from(mediaNodeAudioMetadata)
+								.innerJoin(mediaNodes, eq(mediaNodes.id, mediaNodeAudioMetadata.mediaNodeId))
+								.innerJoin(radios, eq(radios.id, mediaNodes.radioId))
+								.where(eq(radios.createdByUserId, userId)),
+						catch: (cause) =>
+							new UserRepositoryError({
+								cause,
+								message: "failed to query user storage usage",
+							}),
+					})
+
+					const quotaBytes = quotaRows[0]?.storageQuotaBytes ?? defaultStorageQuotaBytes
+					const usedBytes = usedRows.reduce(
+						(total, row) => total + (row.sizeBytes ?? BigInt(0)),
+						BigInt(0),
+					)
+
+					return {
+						quotaBytes,
+						usedBytes,
+						remainingBytes: quotaBytes > usedBytes ? quotaBytes - usedBytes : BigInt(0),
+					} as const
+				}).pipe(
+					Effect.annotateLogs({ userId }),
+					Effect.withSpan("UserRepository.getStorageInfo", { attributes: { userId } }),
 				),
 		}
 	}),

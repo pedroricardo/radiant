@@ -10,14 +10,21 @@ export const usersGroupLive = HttpApiBuilder.group(
 	(handlers) =>
 		handlers
 			.handle("getUser", ({ path: { id } }) => Effect.dieMessage("TODO: get user " + id))
-			.handle(
-				"getSelf",
-				Effect.fn("http.users.getSelf")(
+				.handle(
+					"getSelf",
+					Effect.fn("http.users.getSelf")(
 					function* (req) {
 						const userRepo = yield* UserRepository
 						return yield* yield* userRepo.getUser(yield* CurrentUser)
-					},
-					Effect.orDie, // We shouldn't get a NoSuchElementException because the user will exist if we even get into the route main code, and if we get a database error, well, we can't really do anything except explode and return a 500 error
+						},
+						Effect.orDie, // We shouldn't get a NoSuchElementException because the user will exist if we even get into the route main code, and if we get a database error, well, we can't really do anything except explode and return a 500 error
+					),
+				)
+				.handle(
+					"getSelfStorage",
+					Effect.fn("http.users.getSelfStorage")(function* () {
+						const userRepo = yield* UserRepository
+						return yield* userRepo.getStorageInfo(yield* CurrentUser)
+					}, Effect.orDie),
 				),
-			),
 )

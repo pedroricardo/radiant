@@ -64,6 +64,18 @@ export class MediaLibraryInvalidAudioFileError extends Schema.TaggedError<MediaL
 	}),
 ) {}
 
+export class MediaLibraryStorageQuotaExceededError extends Schema.TaggedError<MediaLibraryStorageQuotaExceededError>()(
+	"MediaLibraryStorageQuotaExceededError",
+	{
+		quotaBytes: Schema.BigInt,
+		usedBytes: Schema.BigInt,
+		attemptedBytes: Schema.BigInt,
+	},
+	HttpApiSchema.annotations({
+		status: 413,
+	}),
+) {}
+
 export class MediaLibraryCoverArtNotFoundError extends Schema.TaggedError<MediaLibraryCoverArtNotFoundError>()(
 	"MediaLibraryCoverArtNotFoundError",
 	{
@@ -133,6 +145,7 @@ export const mediaLibraryGroup = HttpApiGroup.make("mediaLibrary")
 			.addError(MediaLibraryNameConflictError)
 			.addError(MediaLibraryInvalidMoveError)
 			.addError(MediaLibraryInvalidAudioFileError)
+			.addError(MediaLibraryStorageQuotaExceededError)
 			.addError(MediaLibraryServiceError)
 			.addError(RadioManagerDatabaseError)
 			.addError(RadioNotFound)

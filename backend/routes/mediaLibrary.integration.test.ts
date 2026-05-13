@@ -262,6 +262,15 @@ it.layer(
 			expect(coverArtResponse.headers.get("content-type")).toBe("image/png")
 			const coverArtBytes = new Uint8Array(yield* Effect.promise(() => coverArtResponse.arrayBuffer()))
 			expect(Array.from(coverArtBytes)).toEqual([7, 8, 9])
+
+			const storageInfo = yield* RadiantClient.RadiantClient.use((client) =>
+				client.users.getSelfStorage(),
+			).pipe(Effect.provide(clientLayer))
+			expect(storageInfo.quotaBytes).toBe(BigInt(5_000_000_000))
+			expect(storageInfo.usedBytes).toBeGreaterThan(BigInt(0))
+			expect(storageInfo.remainingBytes).toBe(
+				storageInfo.quotaBytes - storageInfo.usedBytes,
+			)
 		}),
 	)
 })

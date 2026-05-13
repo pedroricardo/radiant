@@ -1,4 +1,5 @@
 import { expect, mock } from "bun:test"
+import { eq } from "drizzle-orm"
 import { Effect, Layer, Stream } from "effect"
 
 import { it } from "../../bun-test-effect"
@@ -168,6 +169,18 @@ const seedRadio = () =>
 		),
 	)
 
+const setUserStorageQuota = (storageQuotaBytes: bigint | null) =>
+	Drizzle.pipe(
+		Effect.flatMap((db) =>
+			Effect.promise(() =>
+				db
+					.update(users)
+					.set({ storageQuotaBytes })
+					.where(eq(users.id, userId)),
+			),
+		),
+	)
+
 const makeSilentWav = (durationMs: number) => {
 	const sampleRate = 44_100
 	const channels = 1
@@ -297,6 +310,122 @@ it.layer(baseLayer)(({ scoped }) => {
 			expect(uploaded.storageKey).toStartWith(`${radioId}/media_`)
 			expect(typeof uploaded.fileHash).toBe("string")
 			expect(storageSpy.putObject).toHaveBeenCalledTimes(2)
+		}),
+	)
+
+	scoped("uploadAudioFile rejects files that exceed the user storage quota", () =>
+		Effect.gen(function* () {
+			yield* resetDb
+			yield* seedRadio()
+			yield* setUserStorageQuota(BigInt(10))
+			storageSpy.putObject.mockClear()
+			storageSpy.deleteObject.mockClear()
+
+			const mediaLibrary = yield* MediaLibraryService
+			const error = yield* mediaLibrary
+				.uploadAudioFile({
+					radioId,
+					parentId: null,
+					name: "Too Large.wav",
+					contentType: "audio/wav",
+					content: Stream.make(makeSilentWav(500)),
+				})
+				.pipe(Effect.flip)
+
+			expect(error._tag).toBe("MediaLibraryStorageQuotaExceededError")
+			if (error._tag !== "MediaLibraryStorageQuotaExceededError") {
+				throw new Error(`Expected MediaLibraryStorageQuotaExceededError, got ${error._tag}`)
+			}
+			expect(error.quotaBytes).toBe(BigInt(10))
+			expect(error.usedBytes).toBe(BigInt(0))
+			expect(error.attemptedBytes).toBeGreaterThan(BigInt(10))
+			expect(storageSpy.putObject).toHaveBeenCalledTimes(1)
+			expect(storageSpy.deleteObject).toHaveBeenCalledTimes(1)
+		}),
+	)
+
+	scoped("uploadAudioFile accounts for accumulated usage across multiple files", () =>
+		Effect.gen(function* () {
+			yield* resetDb
+			yield* seedRadio()
+			yield* setUserStorageQuota(BigInt(60_000))
+
+			const mediaLibrary = yield* MediaLibraryService
+
+			const first = yield* mediaLibrary.uploadAudioFile({
+				radioId,
+				parentId: null,
+				name: "First.wav",
+				contentType: "audio/wav",
+				content: Stream.make(makeSilentWav(500)),
+			})
+
+			const secondError = yield* mediaLibrary
+				.uploadAudioFile({
+					radioId,
+					parentId: null,
+					name: "Second.wav",
+					contentType: "audio/wav",
+					content: Stream.make(makeSilentWav(500)),
+				})
+				.pipe(Effect.flip)
+
+			expect(first.kind).toBe("audio_file")
+			expect(secondError._tag).toBe("MediaLibraryStorageQuotaExceededError")
+			if (secondError._tag !== "MediaLibraryStorageQuotaExceededError") {
+				throw new Error(`Expected MediaLibraryStorageQuotaExceededError, got ${secondError._tag}`)
+			}
+			expect(secondError.usedBytes).toBeGreaterThan(BigInt(0))
+			expect(secondError.attemptedBytes).toBeGreaterThan(BigInt(0))
+			expect(secondError.usedBytes + secondError.attemptedBytes).toBeGreaterThan(
+				secondError.quotaBytes,
+			)
+		}),
+	)
+
+	scoped("deleting a file frees storage quota for later uploads", () =>
+		Effect.gen(function* () {
+			yield* resetDb
+			yield* seedRadio()
+			yield* setUserStorageQuota(BigInt(60_000))
+
+			const mediaLibrary = yield* MediaLibraryService
+
+			const first = yield* mediaLibrary.uploadAudioFile({
+				radioId,
+				parentId: null,
+				name: "First.wav",
+				contentType: "audio/wav",
+				content: Stream.make(makeSilentWav(500)),
+			})
+
+			const beforeDelete = yield* mediaLibrary
+				.uploadAudioFile({
+					radioId,
+					parentId: null,
+					name: "Second.wav",
+					contentType: "audio/wav",
+					content: Stream.make(makeSilentWav(500)),
+				})
+				.pipe(Effect.flip)
+
+			expect(beforeDelete._tag).toBe("MediaLibraryStorageQuotaExceededError")
+
+			yield* mediaLibrary.deleteNode({
+				radioId,
+				nodeId: first.id,
+			})
+
+			const second = yield* mediaLibrary.uploadAudioFile({
+				radioId,
+				parentId: null,
+				name: "Second.wav",
+				contentType: "audio/wav",
+				content: Stream.make(makeSilentWav(500)),
+			})
+
+			expect(second.kind).toBe("audio_file")
+			expect(second.name).toBe("Second.wav")
 		}),
 	)
 

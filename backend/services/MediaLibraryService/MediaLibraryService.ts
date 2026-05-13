@@ -2,13 +2,15 @@ import { and, asc, eq, isNull, ne } from "drizzle-orm"
 import { Context, Data, DateTime, Effect, Layer, Stream } from "effect"
 import { createHash } from "node:crypto"
 
-import { Id, MediaLibrary, MediaNode, Radio } from "../../lib"
+import { Id, MediaLibrary, MediaNode, Radio, User } from "../../lib"
 import { Drizzle } from "../Drizzle"
 import { mediaNodeAudioMetadata } from "../Drizzle/schema/mediaNodeAudioMetadata"
 import { mediaNodes } from "../Drizzle/schema/mediaNodes"
+import { radios } from "../Drizzle/schema/radios"
+import { users } from "../Drizzle/schema/user"
 import { MetadataExtractionService } from "../MetadataExtractionService"
 import { StorageService, StorageServiceError } from "../StorageService"
-import { MediaLibraryCoverArtNotFoundError, MediaLibraryInvalidAudioFileError, MediaLibraryInvalidMoveError, MediaLibraryNameConflictError, MediaLibraryNodeNotFoundError, MediaLibraryServiceError } from "@radiant/client/lib/MediaLibrary"
+import { MediaLibraryCoverArtNotFoundError, MediaLibraryInvalidAudioFileError, MediaLibraryInvalidMoveError, MediaLibraryNameConflictError, MediaLibraryNodeNotFoundError, MediaLibraryServiceError, MediaLibraryStorageQuotaExceededError } from "@radiant/client/lib/MediaLibrary"
 
 type DbMediaNode = typeof mediaNodes.$inferSelect
 type DbMediaNodeAudioMetadata = typeof mediaNodeAudioMetadata.$inferSelect
@@ -131,6 +133,7 @@ export class MediaLibraryService extends Context.Tag("MediaLibraryService")<
 			| MediaLibraryNameConflictError
 			| MediaLibraryInvalidMoveError
 			| MediaLibraryInvalidAudioFileError
+			| MediaLibraryStorageQuotaExceededError
 		>
 		readonly getCoverArt: (args: {
 			readonly radioId: Radio.RadioId
@@ -206,6 +209,9 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 		const db = yield* Drizzle
 		const storage = yield* StorageService
 		const metadataExtraction = yield* MetadataExtractionService
+		const defaultStorageQuotaBytes = BigInt(
+			Bun.env.RADIANT_DEFAULT_STORAGE_QUOTA_BYTES ?? "5000000000",
+		)
 
 		const getAllNodes = (radioId: Radio.RadioId) =>
 			Effect.tryPromise({
@@ -270,6 +276,69 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 					return yield* new MediaLibraryNodeNotFoundError({ radioId, nodeId })
 				}
 				return row
+			})
+
+		const getRadioOwnerUserId = (radioId: Radio.RadioId) =>
+			Effect.gen(function* () {
+				const rows = yield* Effect.tryPromise({
+					try: () =>
+						db
+							.select({ createdByUserId: radios.createdByUserId })
+							.from(radios)
+							.where(eq(radios.id, radioId)),
+					catch: (cause) =>
+						new MediaLibraryServiceError({
+							cause,
+							message: "failed to query radio owner",
+						}),
+				})
+				const row = rows[0]
+				if (!row) {
+					return yield* new MediaLibraryServiceError({
+						cause: radioId,
+						message: "radio not found while resolving storage quota",
+					})
+				}
+				return row.createdByUserId
+			})
+
+		const getUserStorageUsageBytes = (userId: User.UserId) =>
+			Effect.gen(function* () {
+				const rows = yield* Effect.tryPromise({
+					try: () =>
+						db
+							.select({ sizeBytes: mediaNodeAudioMetadata.sizeBytes })
+							.from(mediaNodeAudioMetadata)
+							.innerJoin(mediaNodes, eq(mediaNodes.id, mediaNodeAudioMetadata.mediaNodeId))
+							.innerJoin(radios, eq(radios.id, mediaNodes.radioId))
+							.where(eq(radios.createdByUserId, userId)),
+					catch: (cause) =>
+						new MediaLibraryServiceError({
+							cause,
+							message: "failed to query user storage usage",
+						}),
+				})
+				return rows.reduce(
+					(total, row) => total + (row.sizeBytes ?? BigInt(0)),
+					BigInt(0),
+				)
+			})
+
+		const getUserStorageQuotaBytes = (userId: User.UserId) =>
+			Effect.gen(function* () {
+				const rows = yield* Effect.tryPromise({
+					try: () =>
+						db
+							.select({ storageQuotaBytes: users.storageQuotaBytes })
+							.from(users)
+							.where(eq(users.id, userId)),
+					catch: (cause) =>
+						new MediaLibraryServiceError({
+							cause,
+							message: "failed to query user storage quota",
+						}),
+				})
+				return rows[0]?.storageQuotaBytes ?? defaultStorageQuotaBytes
 			})
 
 		const ensureParentFolder = (
@@ -411,6 +480,20 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 							Effect.map(({ metadata }) => metadata),
 							Effect.tapError(() => storage.deleteObject(storageKey).pipe(Effect.ignoreLogged)),
 						)
+
+						const ownerUserId = yield* getRadioOwnerUserId(radioId)
+						const [usedBytes, quotaBytes] = yield* Effect.all([
+							getUserStorageUsageBytes(ownerUserId),
+							getUserStorageQuotaBytes(ownerUserId),
+						])
+						if (usedBytes + sizeBytes > quotaBytes) {
+							yield* storage.deleteObject(storageKey).pipe(Effect.ignoreLogged)
+							return yield* new MediaLibraryStorageQuotaExceededError({
+								quotaBytes,
+								usedBytes,
+								attemptedBytes: sizeBytes,
+							})
+						}
 
 						if (extracted.coverArt != null) {
 							coverArtStorageKey = `${storageKey}/cover`
