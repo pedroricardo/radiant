@@ -31,6 +31,18 @@
 			"types": "./lib/Id/index.ts",
 			"default": "./lib/Id/index.ts"
 		},
+		"./lib/MediaNode": {
+			"types": "./lib/MediaNode/index.ts",
+			"default": "./lib/MediaNode/index.ts"
+		},
+		"./lib/Playlist": {
+			"types": "./lib/Playlist/index.ts",
+			"default": "./lib/Playlist/index.ts"
+		},
+		"./lib/Playout": {
+			"types": "./lib/Playout/index.ts",
+			"default": "./lib/Playout/index.ts"
+		},
 		"./lib/Radio": {
 			"types": "./lib/Radio/index.ts",
 			"default": "./lib/Radio/index.ts"
@@ -42,6 +54,10 @@
 		"./lib/User": {
 			"types": "./lib/User/index.ts",
 			"default": "./lib/User/index.ts"
+		},
+		"./lib/MediaLibrary": {
+			"types": "./lib/MediaLibrary/index.ts",
+			"default": "./lib/MediaLibrary/index.ts"
 		},
 		"./lib/AudioMultiplexerErrors": {
 			"types": "./lib/AudioMultiplexerErrors.ts",

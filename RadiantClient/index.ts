@@ -18,8 +18,15 @@ export const withHandler = (handler: (req: Request) => Promise<Response>) =>
 	layer.pipe(
 		Layer.provide(FetchHttpClient.layer),
 		Layer.provide(
-			Layer.succeed(FetchHttpClient.Fetch, ((input: RequestInfo | URL, init?: RequestInit) =>
-				handler(new Request(input, init))) as typeof fetch),
+			Layer.succeed(
+				FetchHttpClient.Fetch,
+				((input: Parameters<typeof fetch>[0], init?: RequestInit) =>
+					handler(
+						input instanceof Request
+							? new Request(input, init)
+							: new Request(input instanceof URL ? input.toString() : input, init),
+					)) as typeof fetch,
+			),
 		),
 	)
 export * from "./lib"

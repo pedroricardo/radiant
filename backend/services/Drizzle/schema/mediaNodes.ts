@@ -1,0 +1,35 @@
+import { MediaNode } from "../../../lib"
+import { bigint, integer, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core"
+
+import { DbSchema } from ".."
+import { radioIdType, radios } from "./radios"
+
+export const mediaNodeIdType = () => DbSchema.id(MediaNode.idPrefix).notNull()
+
+export const mediaNodes = pgTable(
+	"media_nodes",
+	{
+		id: mediaNodeIdType().primaryKey(),
+		radioId: radioIdType()
+			.notNull()
+			.references(() => radios.id, { onDelete: "cascade" }),
+		parentId: varchar().$type<MediaNode.MediaNodeId>().references((): AnyPgColumn => mediaNodes.id, {
+			onDelete: "cascade",
+		}),
+		kind: text({ enum: ["folder", "audio_file"] })
+			.$type<MediaNode.MediaNodeKind>()
+			.notNull(),
+		name: varchar().notNull(),
+		createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+	},
+	(mediaNodes) => [
+		uniqueIndex("media_nodes_radio_parent_name_index").on(
+			mediaNodes.radioId,
+			mediaNodes.parentId,
+			mediaNodes.name,
+		),
+	],
+)
+
+import type { AnyPgColumn } from "drizzle-orm/pg-core"

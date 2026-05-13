@@ -1,3 +1,4 @@
+import { HttpServer } from "@effect/platform"
 import * as Drizzle from "./services/Drizzle"
 import { IcyEncoder, RadioManager } from "./services"
 import { AuthService } from "./services/AuthService/AuthService"
@@ -6,6 +7,9 @@ import { layerDrizzle as oauthStateCheckerLayer } from "./services/AuthService/o
 import * as AccountLinkService from "./services/AuthService/oauth/AccountLinkService"
 import * as SessionService from "./services/SessionService"
 import * as UserRepository from "./services/UserRepository"
+import * as MediaLibraryService from "./services/MediaLibraryService"
+import * as MetadataExtractionService from "./services/MetadataExtractionService"
+import * as StorageService from "./services/StorageService"
 import { Layer } from "effect"
 
 const drizzleConfigLayer = Drizzle.Config.fromConfig
@@ -37,6 +41,15 @@ const authServiceLayer = AuthService.Default.pipe(
 const oauthStateLayer = oauthStateCheckerLayer.pipe(Layer.provideMerge(dbLayer))
 
 const radioManagerLayer = RadioManager.layer.pipe(Layer.provideMerge(IcyEncoder.layer))
+const storageServiceLayer = StorageService.LocalDiskStorageService.pipe(
+	Layer.provideMerge(HttpServer.layerContext),
+)
+const metadataExtractionServiceLayer = MetadataExtractionService.MusicMetadataExtractionService
+const mediaLibraryServiceLayer = MediaLibraryService.DatabaseMediaLibraryService.pipe(
+	Layer.provideMerge(dbLayer),
+	Layer.provideMerge(metadataExtractionServiceLayer),
+	Layer.provideMerge(storageServiceLayer),
+)
 
 export const ProductionLayer = Layer.mergeAll(
 	dbLayer,
@@ -49,4 +62,7 @@ export const ProductionLayer = Layer.mergeAll(
 	accountLinkLayer,
 	authServiceLayer,
 	radioManagerLayer,
+	storageServiceLayer,
+	metadataExtractionServiceLayer,
+	mediaLibraryServiceLayer,
 )

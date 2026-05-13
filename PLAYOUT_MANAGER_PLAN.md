@@ -10,6 +10,7 @@ O V1 inclui:
 - grade semanal recorrente
 - ocorrências avulsas absolutas
 - blocos que apontam para `playlist` ou `audio file`
+- apenas blocos de `playlist` podem ser redimensionados
 - playlists com regras de inserção de jingles
 - crossfade com defaults da rádio e override por playlist
 - loop e corte de bloco no limite temporal
@@ -48,7 +49,7 @@ Objetivo:
 
 Tarefas:
 
-1. criar tabelas `radios` e `radio_members`
+1. criar tabela `radios`
 2. criar tabela `media_nodes`
 3. criar tabelas `playlists` e `playlist_items`
 4. criar tabela `schedule_weekly_blocks`
@@ -59,6 +60,7 @@ Tarefas:
    - `targetType`
    - `playbackMode`
    - `modeAfterPlayback`
+   - `playlistFillMode`
    - `kind` de `media_nodes`
 
 Saída esperada:
@@ -143,7 +145,8 @@ Tarefas:
    - crossfade
    - shuffle determinístico
    - cálculo de ciclo
-   - loop e corte do bloco
+   - `playlistFillMode = once | loop`
+   - snap de resize em fronteiras de música
 
 Saída esperada:
 
@@ -184,10 +187,8 @@ Tarefas:
 2. persistir `playout_interruptions`
 3. trocar imediatamente o cluster do rádio para o ficheiro de interrupção
 4. ao terminar, implementar:
-   - `keep_clock`
-   - `delay_schedule`
-5. no modo `delay_schedule`, definir e implementar a regra exata de deslocamento do restante da programação
-6. garantir que restart durante a interrupção continua correto
+   - `overlay`
+5. garantir que restart durante a interrupção continua correto
 
 Saída esperada:
 
@@ -234,6 +235,17 @@ Tarefas:
 Saída esperada:
 
 - programação da rádio já pode ser operada visualmente
+
+Regras de resize no calendário:
+
+- apenas blocos de `playlist` podem ser redimensionados
+- blocos de `audio file` têm duração fixa
+- o calendário nunca corta uma música a meio
+- a menor unidade temporal normal do sistema é uma música completa
+- o resize de playlists faz snap para fronteiras válidas da timeline resolvida
+- a única exceção que pode preemptar no meio de uma música é uma interrupção manual
+- `playlistFillMode = once` toca apenas músicas completas que caibam dentro da janela
+- `playlistFillMode = loop` permite repetir a playlist para preencher uma janela maior
 
 ### Fase 9: testes de regressão e hardening
 
@@ -468,21 +480,15 @@ Isto é uma função de emergência e entra já no V1 apenas no modo manual.
 
 ### Comportamentos após o fim da interrupção
 
-Ao terminar o ficheiro de interrupção, o sistema oferece dois modos:
+Ao terminar o ficheiro de interrupção, o sistema usa apenas um modo:
 
-- `delay_schedule`
-- `keep_clock`
+- `overlay`
 
-#### `delay_schedule`
+#### `overlay`
 
-- o ficheiro é inserido como se tivesse cortado o timeline com uma tesoura
-- o restante da programação é empurrado para a frente
-- o efeito colateral é atrasar o resto do rádio
-
-#### `keep_clock`
-
+- a interrupção sobrepõe temporariamente o que o relógio mandaria tocar
 - o relógio do rádio continua a passar por baixo
-- quando o ficheiro de interrupção termina, volta-se ao conteúdo que o relógio manda agora
+- quando a interrupção termina, volta-se ao conteúdo que o relógio manda agora
 
 ### Escopo do V1
 
@@ -491,6 +497,10 @@ No V1:
 - interrupção é manual apenas
 - não entra como tipo normal de bloco do calendário
 - não precisa ainda de UI de agendamento
+- no calendário, aparece como segmento vermelho sobreposto:
+  `! INTERRUPÇÃO !`
+  `<Nota>`
+  `<Nome do ficheiro de áudio>`
 
 ## Resolução do “agora”
 
@@ -538,9 +548,17 @@ Para um bloco de playlist:
 - aplicar jingles
 - aplicar crossfade
 - calcular duração efetiva do ciclo
+- aplicar `playlistFillMode`
 - calcular `offsetWithinCycle`
 - descobrir item atual
 - descobrir `seekMsInSource`
+
+Semântica adicional dos blocos de playlist:
+
+- a janela no calendário é um alvo temporal, não permissão para cortar áudio a qualquer milissegundo
+- o fim efetivo do bloco é sempre alinhado a uma fronteira de música
+- se for preciso abrir espaço para outro evento a uma hora específica, a playlist é encurtada até ao último boundary válido anterior
+- se for preciso entrar imediatamente por cima do que está a tocar, usa-se uma interrupção `overlay`
 
 ## Integração com runtime da rádio
 
@@ -651,6 +669,7 @@ Ele apenas:
 - `endLocalTime`
 - `targetType`
 - `targetId`
+- `playlistFillMode?`
 
 #### `schedule_one_off_blocks`
 
@@ -660,6 +679,7 @@ Ele apenas:
 - `endsAtUtc`
 - `targetType`
 - `targetId`
+- `playlistFillMode?`
 
 #### `playout_interruptions`
 
@@ -753,8 +773,7 @@ Estender:
 - arrancar rádio no meio de uma playlist sequencial e confirmar item/offset corretos
 - arrancar rádio no meio de uma playlist em shuffle e confirmar item/offset corretos
 - restart repetido com o mesmo `now` e mesma playlist em shuffle gera sempre a mesma seleção
-- interrupção manual com `keep_clock`
-- interrupção manual com `delay_schedule`
+- interrupção manual com `overlay`
 - dois listeners simultâneos continuam sincronizados durante troca de bloco
 - upload persiste metadata e produz ficheiro reproduzível
 

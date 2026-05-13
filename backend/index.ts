@@ -3,19 +3,22 @@ import * as RadiantClient from "@radiant/client"
 import { Effect, Layer, ManagedRuntime } from "effect"
 import { ProductionLayer } from "./layers"
 import { authGroupLive, AuthorizationLive } from "./routes/auth"
+import { mediaLibraryGroupLive } from "./routes/mediaLibrary"
 import { radioGroupLive } from "./routes/radios"
 import { usersGroupLive } from "./routes/users"
 import { Middleware, Router } from "@effect/platform/HttpApiBuilder"
 
-const RadiantApiLive = HttpApiBuilder.api(RadiantClient.ApiContract.httpApi).pipe(
+export const RadiantApiImpl = HttpApiBuilder.api(RadiantClient.ApiContract.httpApi).pipe(
 	Layer.provide(usersGroupLive),
 	Layer.provide(authGroupLive),
 	Layer.provide(radioGroupLive),
-	Layer.provide(AuthorizationLive)
+	Layer.provide(mediaLibraryGroupLive),
+	Layer.provide(AuthorizationLive),
+	Layer.merge(Layer.mergeAll(HttpServer.layerContext, Router.Live, Middleware.layer))
 )
-const apiLive = RadiantApiLive.pipe(Layer.provide(ProductionLayer))
+const apiLive = RadiantApiImpl.pipe(Layer.provide(ProductionLayer))
 const swaggerLive = HttpApiSwagger.layer({ path: "/api/docs" }).pipe(Layer.provide(apiLive))
-const RadiantApiLiveHttpServer = Layer.mergeAll(apiLive, swaggerLive, HttpServer.layerContext, Router.Live, Middleware.layer)
+const RadiantApiLiveHttpServer = Layer.mergeAll(apiLive, swaggerLive)
 export const RadiantApiLiveHttpServerRuntime = ManagedRuntime.make(RadiantApiLiveHttpServer)
 export const webHandler = {
 	handler: async (req: Request) => {

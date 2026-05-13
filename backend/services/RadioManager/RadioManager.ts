@@ -29,7 +29,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 			getStream,
 		}
 	}),
-	dependencies: [RadioManagerConfig.Default],
+	dependencies: [RadioManagerConfig.Default, IcyEncoder.layer],
 }) {}
 
 export const layer = RadioManager.Default

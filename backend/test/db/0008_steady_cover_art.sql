@@ -1,0 +1,12 @@
+ALTER TABLE "media_nodes" ADD COLUMN "title" varchar;
+ALTER TABLE "media_nodes" ADD COLUMN "artist" varchar;
+ALTER TABLE "media_nodes" ADD COLUMN "album" varchar;
+ALTER TABLE "media_nodes" ADD COLUMN "albumArtist" varchar;
+ALTER TABLE "media_nodes" ADD COLUMN "genre" text;
+ALTER TABLE "media_nodes" ADD COLUMN "year" integer;
+ALTER TABLE "media_nodes" ADD COLUMN "trackNumber" integer;
+ALTER TABLE "media_nodes" ADD COLUMN "trackTotal" integer;
+ALTER TABLE "media_nodes" ADD COLUMN "diskNumber" integer;
+ALTER TABLE "media_nodes" ADD COLUMN "diskTotal" integer;
+ALTER TABLE "media_nodes" ADD COLUMN "coverArtStorageKey" varchar;
+ALTER TABLE "media_nodes" ADD COLUMN "coverArtMimeType" varchar;
