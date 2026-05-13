@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "NEXT_MANUAL_SIG_HANDLE=true bun --bun next dev",
     "build": "NEXT_MANUAL_SIG_HANDLE=true bun next build",
-    "start": "NEXT_MANUAL_SIG_HANDLE=true bun --bun next start"
+    "start": "NEXT_MANUAL_SIG_HANDLE=true bun --bun next start",
+    "typecheck": "bunx next typegen . && bunx tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
