@@ -152,4 +152,25 @@
 			"})",
 		],
 	},
+	"Effect Tagged Error": {
+		"prefix": "tagerr",
+		"body": [
+			"export class $1 extends Data.TaggedError(",
+			"  \"$1\",",
+			") {}"
+		],
+	},
+	"Effect Http Error": {
+		"prefix": "httperr",
+		"body": [
+			"export class $1 extends Schema.TaggedError<$1>()(",
+			"  \"$1\",",
+			"  {",
+			"    message: Schema.String,",
+			"    cause: Schema.Unknown,",
+			"  },",
+			"  HttpApiSchema.annotations({ status: 500 }),",
+			") {}"
+		],
+	},
 }

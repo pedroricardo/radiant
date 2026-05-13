@@ -1,6 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 import { RadioId } from "."
+import * as Errors from "./errors";
 import * as AudioMultiplexerErrors from "../AudioMultiplexerErrors"
 import * as AudioSourceErrors from "../AudioSourceErrors"
 import * as IcyEncoderErrors from "../IcyEncoderErrors"
@@ -28,6 +29,8 @@ export const radioGroup = HttpApiGroup.make("radio")
 			.addError(AudioMultiplexerErrors.MultiplexerSourcePullError)
 			.addError(AudioMultiplexerErrors.MultiplexerCommandQueueError)
 			.addError(AudioSourceErrors.AudioSourceConfigurationError)
+			.addError(Errors.RadioNotFound)
+			.addError(Errors.RadioManagerDatabaseError)
 			.addError(IcyEncoderErrors.EncodingError),
 	)
 	.prefix("/radios")

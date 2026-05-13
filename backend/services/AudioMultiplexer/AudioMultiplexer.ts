@@ -48,7 +48,6 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 		})
 
 		const frameLength = config.frameSamples * config.channels
-		const frameDurationMs = (config.frameSamples / config.sampleRate) * 1_000
 
 		const setCluster = (
 			sources: ReadonlyArray<MultiplexerSourceInput>,

@@ -31,7 +31,7 @@ class RadioStream extends Data.TaggedClass("RadioStream")<{
 	readonly playoutManagerFiber: Fiber.RuntimeFiber<void, RadioStreamError>
 }> {}
 
-const TARGET_CLIENT_BUFFER = Duration.seconds(30)
+const TARGET_CLIENT_BUFFER: Duration.DurationInput = "30 seconds"
 
 const frameBufferCapacityFrom = (frameDurationMs: number): number =>
 	Math.max(1, Math.ceil(Duration.toMillis(TARGET_CLIENT_BUFFER) / frameDurationMs))
