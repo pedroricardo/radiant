@@ -1,6 +1,6 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
-import { RadioId } from "."
+import { RadioDescription, RadioId, RadioInfo, RadioName, RadioTimezone } from "."
 import * as Errors from "./errors"
 import * as AudioMultiplexerErrors from "../AudioMultiplexerErrors"
 import * as AudioSourceErrors from "../AudioSourceErrors"
@@ -8,21 +8,7 @@ import * as IcyEncoderErrors from "../IcyEncoderErrors"
 import { Authorization } from "../Auth"
 
 const RadioIdParam = HttpApiSchema.param("radioId", RadioId)
-const RadioName = Schema.NonEmptyString.pipe(Schema.maxLength(120))
-const RadioDescription = Schema.NullOr(Schema.String.pipe(Schema.maxLength(2_000)))
-const RadioTimezone = Schema.NonEmptyString.pipe(Schema.maxLength(100))
 
-export const RadioInfo = Schema.Struct({
-	id: RadioId,
-	name: RadioName,
-	description: RadioDescription,
-	timezone: RadioTimezone,
-	defaultCrossfadeMs: Schema.Number,
-	isPublic: Schema.Boolean,
-	createdByUserId: Schema.String,
-	createdAt: Schema.DateFromString,
-	updatedAt: Schema.DateFromString,
-})
 
 export const CreateRadioRequest = Schema.Struct({
 	name: RadioName,
