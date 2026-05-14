@@ -1,10 +1,11 @@
-import { inProcessApiClient, RadiantApiLiveHttpServerRuntime } from "@radiant/backend";
-import { headers } from "next/headers";
-import {Effect} from "effect"
-import { ManagedRuntime } from "effect/ManagedRuntime";
-import { RadiantClient } from "@radiant/client";
+import { inProcessApiClient, RadiantApiLiveHttpServerRuntime } from "@radiant/backend"
+import { RadiantClient } from "@radiant/client"
+import { Effect } from "effect"
+import { ManagedRuntime } from "effect/ManagedRuntime"
+import { headers } from "next/headers"
 
-type RuntimeServices = typeof RadiantApiLiveHttpServerRuntime extends ManagedRuntime<infer A, any> ? A : never;
+type RuntimeServices =
+	typeof RadiantApiLiveHttpServerRuntime extends ManagedRuntime<infer A, any> ? A : never
 
 /**
  * Runs an `Effect` from the Next.js server side with the same backend/runtime
@@ -48,4 +49,9 @@ type RuntimeServices = typeof RadiantApiLiveHttpServerRuntime extends ManagedRun
  * )
  * ```
  */
-export const runServerEffect = async <A, E>(e: Effect.Effect<A, E, RuntimeServices | RadiantClient>) => RadiantApiLiveHttpServerRuntime.runPromise(e.pipe(Effect.provide(await inProcessApiClient(async() => new Headers(await headers())))))
+export const runServerEffect = async <A, E>(
+	e: Effect.Effect<A, E, RuntimeServices | RadiantClient>,
+) =>
+	RadiantApiLiveHttpServerRuntime.runPromise(
+		e.pipe(Effect.provide(await inProcessApiClient(async () => new Headers(await headers())))),
+	)

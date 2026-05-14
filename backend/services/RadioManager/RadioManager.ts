@@ -1,11 +1,11 @@
 import { Radio, User } from "@radiant/client"
-import { Array, Cache, Duration, Effect, Option } from "effect"
 import { and, eq } from "drizzle-orm"
+import { Array, Cache, Duration, Effect } from "effect"
 import * as crypto from "node:crypto"
 
-import * as IcyEncoder from "../IcyEncoder"
 import { Drizzle } from "../Drizzle"
 import { radios } from "../Drizzle/schema/radios"
+import * as IcyEncoder from "../IcyEncoder"
 import { RadioManagerConfig } from "./RadioManagerConfig"
 import * as RadioStream from "./RadioStream"
 
@@ -26,8 +26,7 @@ type UpdateRadioInput = {
 	isPublic?: boolean
 }
 
-const makeRadioId = (): Radio.RadioId =>
-	`${Radio.idPrefix}_${crypto.randomUUID()}` as Radio.RadioId
+const makeRadioId = (): Radio.RadioId => `${Radio.idPrefix}_${crypto.randomUUID()}` as Radio.RadioId
 
 export class RadioManager extends Effect.Service<RadioManager>()("RadioManager", {
 	accessors: true,
@@ -41,9 +40,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 		const encoder = yield* IcyEncoder.IcyEncoder
 		const db = yield* Drizzle
 
-		const getRadioInfo = Effect.fn("RadioManager.getRadioInfo")(function* (
-			radioId: Radio.RadioId,
-		) {
+		const getRadioInfo = Effect.fn("RadioManager.getRadioInfo")(function* (radioId: Radio.RadioId) {
 			const radioInfo = Array.head(
 				yield* Effect.tryPromise({
 					try: () => db.select().from(radios).where(eq(radios.id, radioId)),
@@ -55,20 +52,14 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 				}),
 			)
 
-			return yield* radioInfo.pipe(
-				Effect.catchAll(() => Radio.Errors.RadioNotFound.make()),
-			)
+			return yield* radioInfo.pipe(Effect.catchAll(() => Radio.Errors.RadioNotFound.make()))
 		})
 
 		const listUserRadios = Effect.fn("RadioManager.listUserRadios")(function* (
 			userId: User.UserId,
 		) {
 			return yield* Effect.tryPromise({
-				try: () =>
-					db
-						.select()
-						.from(radios)
-						.where(eq(radios.createdByUserId, userId)),
+				try: () => db.select().from(radios).where(eq(radios.createdByUserId, userId)),
 				catch: (e) =>
 					Radio.Errors.RadioManagerDatabaseError.make({
 						message: "failed to list user radios from database",
@@ -77,9 +68,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 			})
 		})
 
-		const createRadio = Effect.fn("RadioManager.createRadio")(function* (
-			input: CreateRadioInput,
-		) {
+		const createRadio = Effect.fn("RadioManager.createRadio")(function* (input: CreateRadioInput) {
 			const radioId = makeRadioId()
 
 			const inserted = Array.head(
@@ -108,7 +97,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 			return yield* inserted.pipe(
 				Effect.catchAll((e) =>
 					Radio.Errors.RadioManagerDatabaseError.make({
-						message: "database did not return created radio"
+						message: "database did not return created radio",
 					}),
 				),
 			)
@@ -139,14 +128,10 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 				}),
 			)
 
-			return yield* updated.pipe(
-				Effect.catchAll(() => Radio.Errors.RadioNotFound.make()),
-			)
+			return yield* updated.pipe(Effect.catchAll(() => Radio.Errors.RadioNotFound.make()))
 		})
 
-		const deleteRadio = Effect.fn("RadioManager.deleteRadio")(function* (
-			radioId: Radio.RadioId,
-		) {
+		const deleteRadio = Effect.fn("RadioManager.deleteRadio")(function* (radioId: Radio.RadioId) {
 			yield* getRadioInfo(radioId)
 
 			yield* Effect.tryPromise({
@@ -171,12 +156,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 						db
 							.select()
 							.from(radios)
-							.where(
-								and(
-									eq(radios.id, radioId),
-									eq(radios.createdByUserId, userId),
-								),
-							),
+							.where(and(eq(radios.id, radioId), eq(radios.createdByUserId, userId))),
 					catch: (e) =>
 						Radio.Errors.RadioManagerDatabaseError.make({
 							message: "failed to fetch user radio info from database",
@@ -185,9 +165,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 				}),
 			)
 
-			return yield* radioInfo.pipe(
-				Effect.catchAll(() => Radio.Errors.RadioNotFound.make()),
-			)
+			return yield* radioInfo.pipe(Effect.catchAll(() => Radio.Errors.RadioNotFound.make()))
 		})
 
 		const updateUserRadio = Effect.fn("RadioManager.updateUserRadio")(function* (
@@ -206,12 +184,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 								...input,
 								updatedAt: new Date(),
 							})
-							.where(
-								and(
-									eq(radios.id, radioId),
-									eq(radios.createdByUserId, userId),
-								),
-							)
+							.where(and(eq(radios.id, radioId), eq(radios.createdByUserId, userId)))
 							.returning(),
 					catch: (e) =>
 						Radio.Errors.RadioManagerDatabaseError.make({
@@ -221,9 +194,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 				}),
 			)
 
-			return yield* updated.pipe(
-				Effect.catchAll(() => Radio.Errors.RadioNotFound.make()),
-			)
+			return yield* updated.pipe(Effect.catchAll(() => Radio.Errors.RadioNotFound.make()))
 		})
 
 		const deleteUserRadio = Effect.fn("RadioManager.deleteUserRadio")(function* (
@@ -234,14 +205,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 
 			yield* Effect.tryPromise({
 				try: () =>
-					db
-						.delete(radios)
-						.where(
-							and(
-								eq(radios.id, radioId),
-								eq(radios.createdByUserId, userId),
-							),
-						),
+					db.delete(radios).where(and(eq(radios.id, radioId), eq(radios.createdByUserId, userId))),
 				catch: (e) =>
 					Radio.Errors.RadioManagerDatabaseError.make({
 						message: "failed to delete user radio from database",

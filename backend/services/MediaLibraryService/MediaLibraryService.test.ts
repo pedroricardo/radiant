@@ -7,35 +7,36 @@ import { TestDbLayer, resetDb } from "../../test/support/testDb"
 import { Drizzle } from "../Drizzle"
 import { mediaNodeAudioMetadata } from "../Drizzle/schema/mediaNodeAudioMetadata"
 import { mediaNodes } from "../Drizzle/schema/mediaNodes"
-import * as MetadataExtractionService from "../MetadataExtractionService"
 import { radios } from "../Drizzle/schema/radios"
 import { users } from "../Drizzle/schema/user"
-import {
-	DatabaseMediaLibraryService,
-	MediaLibraryService,
-} from "./MediaLibraryService"
+import * as MetadataExtractionService from "../MetadataExtractionService"
 import { StorageService, StorageServiceError } from "../StorageService"
+import { DatabaseMediaLibraryService, MediaLibraryService } from "./MediaLibraryService"
 
 const radioId = "radio_test" as const
 const userId = "user_test" as const
 
 const storageSpy = {
-	putObject: mock((args: {
-		readonly radioId: string
-		readonly key: string
-		readonly content: Stream.Stream<Uint8Array, unknown>
-		readonly contentType?: string | undefined
-	}) =>
-		Stream.runDrain(args.content).pipe(
-			Effect.mapError(
-				(cause) =>
-					new StorageServiceError({
-						message: "storage spy failed to consume the upload stream",
-						cause,
-					}),
+	putObject: mock(
+		(args: {
+			readonly radioId: string
+			readonly key: string
+			readonly content: Stream.Stream<Uint8Array, unknown>
+			readonly contentType?: string | undefined
+		}) =>
+			Stream.runDrain(args.content).pipe(
+				Effect.mapError(
+					(cause) =>
+						new StorageServiceError({
+							message: "storage spy failed to consume the upload stream",
+							cause,
+						}),
+				),
 			),
-		)),
-	readObject: mock((_key: string) => Effect.dieMessage("readObject not needed in MediaLibraryService tests")),
+	),
+	readObject: mock((_key: string) =>
+		Effect.dieMessage("readObject not needed in MediaLibraryService tests"),
+	),
 	moveObject: mock((_args: { readonly fromKey: string; readonly toKey: string }) => Effect.void),
 	deleteObject: mock((_key: string) => Effect.void),
 }
@@ -100,7 +101,10 @@ const baseLayer = Layer.mergeAll(
 	mediaLibraryLayer,
 )
 
-const seedNode = (values: Partial<typeof mediaNodes.$inferInsert> & Pick<typeof mediaNodes.$inferInsert, "id" | "kind" | "name">) =>
+const seedNode = (
+	values: Partial<typeof mediaNodes.$inferInsert> &
+		Pick<typeof mediaNodes.$inferInsert, "id" | "kind" | "name">,
+) =>
 	Drizzle.pipe(
 		Effect.flatMap((db) =>
 			Effect.promise(() =>
@@ -172,12 +176,7 @@ const seedRadio = () =>
 const setUserStorageQuota = (storageQuotaBytes: bigint | null) =>
 	Drizzle.pipe(
 		Effect.flatMap((db) =>
-			Effect.promise(() =>
-				db
-					.update(users)
-					.set({ storageQuotaBytes })
-					.where(eq(users.id, userId)),
-			),
+			Effect.promise(() => db.update(users).set({ storageQuotaBytes }).where(eq(users.id, userId))),
 		),
 	)
 

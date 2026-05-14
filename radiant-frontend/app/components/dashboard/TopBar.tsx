@@ -12,9 +12,18 @@ export function TopBar(props: { username: string; avatarUrl?: string }) {
 			</div>
 
 			<div className="flex items-center gap-4">
-				<Button variant="secondary" size="sm">Go Live</Button>
-				<div className={`flex items-center gap-3 text-sm font-bold tracking-tight text-neo-black ${groteskFont.className}`}>
-					{props.avatarUrl ? <img src={props.avatarUrl} className="h-8 w-8 border-3 border-neo-black shadow-neo-badge" /> : null}
+				<Button variant="secondary" size="sm">
+					Go Live
+				</Button>
+				<div
+					className={`flex items-center gap-3 text-sm font-bold tracking-tight text-neo-black ${groteskFont.className}`}
+				>
+					{props.avatarUrl ? (
+						<img
+							src={props.avatarUrl}
+							className="h-8 w-8 border-3 border-neo-black shadow-neo-badge"
+						/>
+					) : null}
 					{props.username}
 				</div>
 			</div>

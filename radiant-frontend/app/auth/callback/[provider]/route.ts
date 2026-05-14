@@ -17,7 +17,7 @@ export const GET = async (request: Request) => {
 	const sourceUrl = new URL(request.url)
 	const targetUrl = new URL(
 		`/api/auth/oauth/${encodeURIComponent(provider)}/callback${sourceUrl.search}`,
-		request.url
+		request.url,
 	)
 
 	const response = await webHandler.handler(new Request(targetUrl, request))
@@ -35,6 +35,6 @@ export const GET = async (request: Request) => {
 
 	return new Response(null, {
 		status: 302,
-		headers
+		headers,
 	})
 }

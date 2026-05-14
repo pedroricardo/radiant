@@ -7,14 +7,28 @@ import { useId, useState } from "react"
 import { createRadioAtom, radioListReactivityKey } from "../../lib/atoms/radiantClient"
 import { groteskFont } from "../../lib/fonts"
 import { Button } from "../ui/Button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/Dialog"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "../ui/Dialog"
 import { Input } from "../ui/Input"
 import { Label } from "../ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/Select"
 import { Switch } from "../ui/Switch"
 import { Textarea } from "../ui/Textarea"
 
-const fallbackTimezones = ["UTC", "Europe/Lisbon", "Europe/London", "America/New_York", "Asia/Tokyo"]
+const fallbackTimezones = [
+	"UTC",
+	"Europe/Lisbon",
+	"Europe/London",
+	"America/New_York",
+	"Asia/Tokyo",
+]
 
 const getAvailableTimezones = () => {
 	if (typeof Intl.supportedValuesOf === "function") {
@@ -106,7 +120,8 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 				<DialogHeader>
 					<DialogTitle>Criar radio</DialogTitle>
 					<DialogDescription>
-						Define o nome e a configuracao base da estacao. Podes ajustar o resto depois no console da radio.
+						Define o nome e a configuracao base da estacao. Podes ajustar o resto depois no console
+						da radio.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -155,7 +170,9 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 
 					<div className="flex items-center justify-between gap-4 border-3 border-neo-black bg-surface-muted px-4 py-3 shadow-neo-badge">
 						<div>
-							<div className="text-sm font-extrabold uppercase tracking-[0.16em] text-neo-black">Radio publica</div>
+							<div className="text-sm font-extrabold uppercase tracking-[0.16em] text-neo-black">
+								Radio publica
+							</div>
 							<p className={`mt-1 text-sm text-black/65 ${groteskFont.className}`}>
 								Permite expor a estacao publicamente quando o stream estiver pronto.
 							</p>
@@ -165,13 +182,20 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 					</div>
 
 					{errorMessage ? (
-						<div className={`border-3 border-neo-black bg-[#ffb4a8] px-4 py-3 text-sm font-bold text-neo-black shadow-neo-badge ${groteskFont.className}`}>
+						<div
+							className={`border-3 border-neo-black bg-[#ffb4a8] px-4 py-3 text-sm font-bold text-neo-black shadow-neo-badge ${groteskFont.className}`}
+						>
 							{errorMessage}
 						</div>
 					) : null}
 
 					<DialogFooter>
-						<Button type="button" variant="ghost" disabled={isSubmitting} onClick={() => handleOpenChange(false)}>
+						<Button
+							type="button"
+							variant="ghost"
+							disabled={isSubmitting}
+							onClick={() => handleOpenChange(false)}
+						>
 							Cancelar
 						</Button>
 

@@ -1,6 +1,10 @@
-import { Chunk, Data, Effect, Fiber, Function, Option, Stream } from "effect"
 import { AudioSourceConfigurationError } from "@radiant/client/lib/AudioSourceErrors"
-import { DEFAULT_CHANNELS, DEFAULT_FRAME_SAMPLES, DEFAULT_SAMPLE_RATE } from "../../services/AudioMultiplexer/constants"
+import { Chunk, Data, Effect, Fiber, Function, Option, Stream } from "effect"
+import {
+	DEFAULT_CHANNELS,
+	DEFAULT_FRAME_SAMPLES,
+	DEFAULT_SAMPLE_RATE,
+} from "../../services/AudioMultiplexer/constants"
 
 type IsUnion<T, U = T> = T extends any ? ([U] extends [T] ? false : true) : never
 type ValidSampleRate<T extends number> = number extends T
@@ -252,36 +256,34 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string)
 							return Chunk.of(frame)
 						}
 
-							const nextChunk = yield* Effect.either(bytePull)
-							if (nextChunk._tag === "Right") {
-								for (const bytes of Chunk.toReadonlyArray(nextChunk.right)) {
-									pendingBytes = concatUint8Arrays(pendingBytes, bytes)
-								}
-								continue
+						const nextChunk = yield* Effect.either(bytePull)
+						if (nextChunk._tag === "Right") {
+							for (const bytes of Chunk.toReadonlyArray(nextChunk.right)) {
+								pendingBytes = concatUint8Arrays(pendingBytes, bytes)
 							}
+							continue
+						}
 
 						if (Option.isSome(nextChunk.left)) {
 							return yield* Effect.fail(Option.some(nextChunk.left.value))
 						}
 
 						const exitCode = yield* Effect.promise(() => process.exited).pipe(
-							Effect.mapError(
-								(cause) =>
-									Option.some(
-										new AudioSourceConfigurationError({
-											message: `failed waiting for ffmpeg exit for path: ${path}: ${String(cause)}`,
-										}),
-									),
+							Effect.mapError((cause) =>
+								Option.some(
+									new AudioSourceConfigurationError({
+										message: `failed waiting for ffmpeg exit for path: ${path}: ${String(cause)}`,
+									}),
+								),
 							),
 						)
 						const stderr = yield* Fiber.join(stderrFiber).pipe(
-							Effect.mapError(
-								(cause) =>
-									Option.some(
-										new AudioSourceConfigurationError({
-											message: `failed collecting ffmpeg stderr for path: ${path}: ${String(cause)}`,
-										}),
-									),
+							Effect.mapError((cause) =>
+								Option.some(
+									new AudioSourceConfigurationError({
+										message: `failed collecting ffmpeg stderr for path: ${path}: ${String(cause)}`,
+									}),
+								),
 							),
 						)
 
@@ -304,8 +306,7 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string)
 						}
 
 						const alignedByteLength =
-							pendingBytes.length -
-							(pendingBytes.length % Float32Array.BYTES_PER_ELEMENT)
+							pendingBytes.length - (pendingBytes.length % Float32Array.BYTES_PER_ELEMENT)
 						if (alignedByteLength === 0) {
 							return yield* Effect.fail(Option.none())
 						}
@@ -313,11 +314,7 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string)
 						const sampleCount = alignedByteLength / Float32Array.BYTES_PER_ELEMENT
 						const frame = new Float32Array(frameLength)
 						frame.set(
-							new Float32Array(
-								pendingBytes.buffer,
-								pendingBytes.byteOffset,
-								sampleCount,
-							),
+							new Float32Array(pendingBytes.buffer, pendingBytes.byteOffset, sampleCount),
 							0,
 						)
 						pendingBytes = new Uint8Array(0)

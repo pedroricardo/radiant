@@ -1,5 +1,5 @@
-import { Config, Context, Data, Effect, Layer, Stream } from "effect"
 import { FileSystem, Path } from "@effect/platform"
+import { Config, Context, Data, Effect, Layer, Stream } from "effect"
 
 export class StorageServiceError extends Data.TaggedError("StorageServiceError")<{
 	message: string
@@ -35,12 +35,15 @@ export class StorageService extends Context.Tag("StorageService")<
 	}
 >() {}
 
-export const UnimplementedStorageService: Layer.Layer<StorageService> = Layer.succeed(StorageService, {
-	putObject: (_args) => Effect.dieMessage("StorageService.putObject not implemented"),
-	readObject: (_key) => Effect.dieMessage("StorageService.readObject not implemented"),
-	moveObject: (_args) => Effect.dieMessage("StorageService.moveObject not implemented"),
-	deleteObject: (_key) => Effect.dieMessage("StorageService.deleteObject not implemented"),
-})
+export const UnimplementedStorageService: Layer.Layer<StorageService> = Layer.succeed(
+	StorageService,
+	{
+		putObject: (_args) => Effect.dieMessage("StorageService.putObject not implemented"),
+		readObject: (_key) => Effect.dieMessage("StorageService.readObject not implemented"),
+		moveObject: (_args) => Effect.dieMessage("StorageService.moveObject not implemented"),
+		deleteObject: (_key) => Effect.dieMessage("StorageService.deleteObject not implemented"),
+	},
+)
 
 export const LocalDiskStorageService = Layer.effect(
 	StorageService,
@@ -52,18 +55,18 @@ export const LocalDiskStorageService = Layer.effect(
 		)
 
 		const ensureParentDirectory = (key: string) =>
-			fs.makeDirectory(path.dirname(toStoragePath(root, key, path)), { recursive: true }).pipe(
-				Effect.mapError(mapStorageError("failed to create storage directory")),
-			)
+			fs
+				.makeDirectory(path.dirname(toStoragePath(root, key, path)), { recursive: true })
+				.pipe(Effect.mapError(mapStorageError("failed to create storage directory")))
 
 		const removeIfExists = (targetPath: string) =>
 			fs.exists(targetPath).pipe(
 				Effect.mapError(mapStorageError("failed to check storage path existence")),
 				Effect.flatMap((exists) =>
 					exists
-						? fs.remove(targetPath, { recursive: true }).pipe(
-								Effect.mapError(mapStorageError("failed to cleanup storage path")),
-							)
+						? fs
+								.remove(targetPath, { recursive: true })
+								.pipe(Effect.mapError(mapStorageError("failed to cleanup storage path")))
 						: Effect.void,
 				),
 			)
@@ -90,21 +93,15 @@ export const LocalDiskStorageService = Layer.effect(
 				Effect.sync(() =>
 					fs
 						.stream(toStoragePath(root, key, path))
-						.pipe(
-							Stream.mapError(
-								mapStorageError("failed to read object from storage"),
-							),
-						),
-				).pipe(
-					Effect.mapError(mapStorageError("failed to prepare storage read stream")),
-				),
+						.pipe(Stream.mapError(mapStorageError("failed to read object from storage"))),
+				).pipe(Effect.mapError(mapStorageError("failed to prepare storage read stream"))),
 
 			moveObject: ({ fromKey, toKey }) =>
 				Effect.gen(function* () {
 					yield* ensureParentDirectory(toKey)
-					yield* fs.rename(toStoragePath(root, fromKey, path), toStoragePath(root, toKey, path)).pipe(
-						Effect.mapError(mapStorageError("failed to move stored object")),
-					)
+					yield* fs
+						.rename(toStoragePath(root, fromKey, path), toStoragePath(root, toKey, path))
+						.pipe(Effect.mapError(mapStorageError("failed to move stored object")))
 				}),
 
 			deleteObject: (key) =>

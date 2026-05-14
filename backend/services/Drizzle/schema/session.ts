@@ -1,6 +1,6 @@
-import { Session } from "../../../lib"
 import { pgTable, timestamp } from "drizzle-orm/pg-core"
 import { DbSchema } from ".."
+import { Session } from "../../../lib"
 import { userIdType, users } from "./user"
 
 export const sessionIdType = () => DbSchema.id(Session.idPrefix).notNull()

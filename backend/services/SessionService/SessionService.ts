@@ -1,8 +1,8 @@
+import { eq } from "drizzle-orm"
+import { Data, DateTime, Effect } from "effect"
 import type { Session, User } from "../../lib"
 import { Drizzle } from "../Drizzle"
 import { sessions } from "../Drizzle/schema/session"
-import { eq } from "drizzle-orm"
-import { Data, DateTime, Effect } from "effect"
 
 class SessionServiceError extends Data.TaggedError("SessionServiceError")<{
 	cause: unknown

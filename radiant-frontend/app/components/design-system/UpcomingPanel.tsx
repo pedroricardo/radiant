@@ -14,8 +14,16 @@ export function UpcomingPanel() {
 			<div className="space-y-3">
 				{items.map((item) => (
 					<Card key={`${item.time}-${item.title}`} className={`${item.tone} px-3 py-3`}>
-						<p className={`${tomorrowFont.className} text-xs font-extrabold uppercase text-neo-black`}>{item.time}</p>
-						<p className={`${groteskFont.className} mt-1 text-sm font-bold tracking-tight text-black`}>{item.title}</p>
+						<p
+							className={`${tomorrowFont.className} text-xs font-extrabold uppercase text-neo-black`}
+						>
+							{item.time}
+						</p>
+						<p
+							className={`${groteskFont.className} mt-1 text-sm font-bold tracking-tight text-black`}
+						>
+							{item.title}
+						</p>
 					</Card>
 				))}
 			</div>

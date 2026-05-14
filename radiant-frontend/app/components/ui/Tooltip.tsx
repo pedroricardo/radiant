@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+import * as React from "react"
 
 import { cn } from "../../lib/utils"
 
@@ -16,10 +16,13 @@ const TooltipContent = React.forwardRef<
 	<TooltipPrimitive.Content
 		ref={ref}
 		sideOffset={sideOffset}
-		className={cn("z-50 border-3 border-neo-black bg-surface-strong px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-neo-badge", className)}
+		className={cn(
+			"z-50 border-3 border-neo-black bg-surface-strong px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-neo-badge",
+			className,
+		)}
 		{...props}
 	/>
 ))
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }

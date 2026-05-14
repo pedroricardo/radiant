@@ -1,5 +1,10 @@
 import { groteskFont, tomorrowFont } from "../../lib/fonts"
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "../ui/ContextMenu"
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuTrigger,
+} from "../ui/ContextMenu"
 import { Panel } from "./Panel"
 
 const nodes = [
@@ -17,8 +22,14 @@ export function LibrarySnapshotPanel() {
 					<ContextMenu key={node}>
 						<ContextMenuTrigger asChild>
 							<div className="border-3 border-neo-black bg-surface-muted px-3 py-3 shadow-neo-badge">
-								<p className={`${tomorrowFont.className} text-[10px] font-extrabold uppercase text-black/55`}>File node</p>
-								<p className={`${groteskFont.className} mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-bold tracking-tight text-neo-black`}>
+								<p
+									className={`${tomorrowFont.className} text-[10px] font-extrabold uppercase text-black/55`}
+								>
+									File node
+								</p>
+								<p
+									className={`${groteskFont.className} mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-bold tracking-tight text-neo-black`}
+								>
 									{node}
 								</p>
 							</div>

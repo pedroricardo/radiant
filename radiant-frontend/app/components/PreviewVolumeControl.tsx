@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { tomorrowFont } from "../lib/fonts"
-import { VerticalSlider } from "./ui/VerticalSlider"
 import { Button } from "./ui/Button"
+import { VerticalSlider } from "./ui/VerticalSlider"
 
 type PreviewVolumeControlProps = {
 	volume?: number
@@ -64,7 +64,9 @@ export function PreviewVolumeControl(props: PreviewVolumeControlProps) {
 
 	return (
 		<div className="flex h-full flex-col items-center justify-start gap-3 self-start">
-			<p className={`${tomorrowFont.className} text-xs font-extrabold uppercase text-neo-black  w-12 text-center`}>
+			<p
+				className={`${tomorrowFont.className} text-xs font-extrabold uppercase text-neo-black  w-12 text-center`}
+			>
 				{volume}%
 			</p>
 

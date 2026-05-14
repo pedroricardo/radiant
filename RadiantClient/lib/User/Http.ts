@@ -20,6 +20,15 @@ export class UserRepositoryError extends Schema.TaggedError<UserRepositoryError>
 ) {}
 export const usersGroup = HttpApiGroup.make("users")
 	.add(HttpApiEndpoint.get("getUser")`/${idParam}`.addSuccess(User).middleware(Authorization))
-	.add(HttpApiEndpoint.get("getSelf")`/me`.addSuccess(User).middleware(Authorization).addError(UserRepositoryError))
-	.add(HttpApiEndpoint.get("getSelfStorage")`/me/storage`.addSuccess(UserStorageInfo).middleware(Authorization))
+	.add(
+		HttpApiEndpoint.get("getSelf")`/me`
+			.addSuccess(User)
+			.middleware(Authorization)
+			.addError(UserRepositoryError),
+	)
+	.add(
+		HttpApiEndpoint.get("getSelfStorage")`/me/storage`
+			.addSuccess(UserStorageInfo)
+			.middleware(Authorization),
+	)
 	.prefix("/users")

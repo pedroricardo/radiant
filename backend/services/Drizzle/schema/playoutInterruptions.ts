@@ -1,12 +1,13 @@
-import { Playout } from "../../../lib"
 import { pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core"
+import { Playout } from "../../../lib"
 
 import { DbSchema } from ".."
 import { mediaNodeIdType, mediaNodes } from "./mediaNodes"
 import { radioIdType, radios } from "./radios"
 import { userIdType, users } from "./user"
 
-export const playoutInterruptionIdType = () => DbSchema.id(Playout.playoutInterruptionIdPrefix).notNull()
+export const playoutInterruptionIdType = () =>
+	DbSchema.id(Playout.playoutInterruptionIdPrefix).notNull()
 
 export const playoutInterruptions = pgTable("playout_interruptions", {
 	id: playoutInterruptionIdType().primaryKey(),

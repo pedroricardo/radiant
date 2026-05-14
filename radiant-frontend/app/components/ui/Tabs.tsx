@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
+import * as React from "react"
 
 import { groteskFont, tomorrowFont } from "../../lib/fonts"
 import { cn } from "../../lib/utils"
@@ -14,7 +14,10 @@ const TabsList = React.forwardRef<
 >(({ className, ...props }, ref) => (
 	<TabsPrimitive.List
 		ref={ref}
-		className={cn("inline-flex gap-2 border-3 border-neo-black bg-surface-muted p-2 shadow-neo-badge", className)}
+		className={cn(
+			"inline-flex gap-2 border-3 border-neo-black bg-surface-muted p-2 shadow-neo-badge",
+			className,
+		)}
 		{...props}
 	/>
 ))
@@ -28,7 +31,7 @@ const TabsTrigger = React.forwardRef<
 		ref={ref}
 		className={cn(
 			`inline-flex min-w-[8rem] items-center justify-center border-3 border-transparent px-3 py-2 text-xs font-extrabold uppercase tracking-[0.18em] text-black/70 outline-none data-[state=active]:border-neo-black data-[state=active]:bg-white data-[state=active]:text-neo-black data-[state=active]:shadow-neo-badge ${tomorrowFont.className} ${groteskFont.className}`,
-			className
+			className,
 		)}
 		{...props}
 	/>
@@ -43,4 +46,4 @@ const TabsContent = React.forwardRef<
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName
 
-export { Tabs, TabsList, TabsTrigger, TabsContent }
+export { Tabs, TabsContent, TabsList, TabsTrigger }

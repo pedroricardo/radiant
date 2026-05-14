@@ -1,7 +1,16 @@
 import { and, asc, eq, isNull, ne } from "drizzle-orm"
-import { Context, Data, DateTime, Effect, Layer, Stream } from "effect"
+import { Context, DateTime, Effect, Layer, Stream } from "effect"
 import { createHash } from "node:crypto"
 
+import {
+	MediaLibraryCoverArtNotFoundError,
+	MediaLibraryInvalidAudioFileError,
+	MediaLibraryInvalidMoveError,
+	MediaLibraryNameConflictError,
+	MediaLibraryNodeNotFoundError,
+	MediaLibraryServiceError,
+	MediaLibraryStorageQuotaExceededError,
+} from "@radiant/client/lib/MediaLibrary"
 import { Id, MediaLibrary, MediaNode, Radio, User } from "../../lib"
 import { Drizzle } from "../Drizzle"
 import { mediaNodeAudioMetadata } from "../Drizzle/schema/mediaNodeAudioMetadata"
@@ -10,7 +19,6 @@ import { radios } from "../Drizzle/schema/radios"
 import { users } from "../Drizzle/schema/user"
 import { MetadataExtractionService } from "../MetadataExtractionService"
 import { StorageService, StorageServiceError } from "../StorageService"
-import { MediaLibraryCoverArtNotFoundError, MediaLibraryInvalidAudioFileError, MediaLibraryInvalidMoveError, MediaLibraryNameConflictError, MediaLibraryNodeNotFoundError, MediaLibraryServiceError, MediaLibraryStorageQuotaExceededError } from "@radiant/client/lib/MediaLibrary"
 
 type DbMediaNode = typeof mediaNodes.$inferSelect
 type DbMediaNodeAudioMetadata = typeof mediaNodeAudioMetadata.$inferSelect
@@ -18,7 +26,6 @@ type DbMediaNodeRow = {
 	readonly media_nodes: DbMediaNode
 	readonly media_node_audio_metadata: DbMediaNodeAudioMetadata | null
 }
-
 
 const staticTree: ReadonlyArray<MediaLibrary.MediaLibraryTreeNode> = [
 	{
@@ -55,9 +62,7 @@ const toMediaLibraryTree = (
 ): ReadonlyArray<MediaLibrary.MediaLibraryTreeNode> =>
 	nodes
 		.filter((row) =>
-			parentId === null
-				? row.media_nodes.parentId == null
-				: row.media_nodes.parentId === parentId,
+			parentId === null ? row.media_nodes.parentId == null : row.media_nodes.parentId === parentId,
 		)
 		.map((node) => ({
 			id: node.media_nodes.id,
@@ -143,9 +148,7 @@ export class MediaLibraryService extends Context.Tag("MediaLibraryService")<
 				readonly contentType: string
 				readonly content: Stream.Stream<Uint8Array, StorageServiceError>
 			},
-			| MediaLibraryServiceError
-			| MediaLibraryNodeNotFoundError
-			| MediaLibraryCoverArtNotFoundError
+			MediaLibraryServiceError | MediaLibraryNodeNotFoundError | MediaLibraryCoverArtNotFoundError
 		>
 		readonly createFolder: (args: {
 			radioId: Radio.RadioId
@@ -164,9 +167,7 @@ export class MediaLibraryService extends Context.Tag("MediaLibraryService")<
 			name: string
 		}) => Effect.Effect<
 			MediaNode.MediaNode,
-			| MediaLibraryServiceError
-			| MediaLibraryNodeNotFoundError
-			| MediaLibraryNameConflictError
+			MediaLibraryServiceError | MediaLibraryNodeNotFoundError | MediaLibraryNameConflictError
 		>
 		readonly moveNode: (args: {
 			radioId: Radio.RadioId
@@ -190,9 +191,12 @@ export const MockStaticMediaLibraryService: Layer.Layer<MediaLibraryService> = L
 	MediaLibraryService,
 	{
 		getTree: (_radioId) => Effect.succeed(staticTree),
-		uploadAudioFile: () => Effect.dieMessage("MockStaticMediaLibraryService.uploadAudioFile not implemented"),
-		getCoverArt: () => Effect.dieMessage("MockStaticMediaLibraryService.getCoverArt not implemented"),
-		createFolder: () => Effect.dieMessage("MockStaticMediaLibraryService.createFolder not implemented"),
+		uploadAudioFile: () =>
+			Effect.dieMessage("MockStaticMediaLibraryService.uploadAudioFile not implemented"),
+		getCoverArt: () =>
+			Effect.dieMessage("MockStaticMediaLibraryService.getCoverArt not implemented"),
+		createFolder: () =>
+			Effect.dieMessage("MockStaticMediaLibraryService.createFolder not implemented"),
 		renameNode: () => Effect.dieMessage("MockStaticMediaLibraryService.renameNode not implemented"),
 		moveNode: () => Effect.dieMessage("MockStaticMediaLibraryService.moveNode not implemented"),
 		deleteNode: () => Effect.dieMessage("MockStaticMediaLibraryService.deleteNode not implemented"),
@@ -219,10 +223,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 					db
 						.select()
 						.from(mediaNodes)
-						.leftJoin(
-							mediaNodeAudioMetadata,
-							eq(mediaNodeAudioMetadata.mediaNodeId, mediaNodes.id),
-						)
+						.leftJoin(mediaNodeAudioMetadata, eq(mediaNodeAudioMetadata.mediaNodeId, mediaNodes.id))
 						.where(eq(mediaNodes.radioId, radioId))
 						.orderBy(asc(mediaNodes.parentId), asc(mediaNodes.name)),
 				catch: (cause) =>
@@ -318,10 +319,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 							message: "failed to query user storage usage",
 						}),
 				})
-				return rows.reduce(
-					(total, row) => total + (row.sizeBytes ?? BigInt(0)),
-					BigInt(0),
-				)
+				return rows.reduce((total, row) => total + (row.sizeBytes ?? BigInt(0)), BigInt(0))
 			})
 
 		const getUserStorageQuotaBytes = (userId: User.UserId) =>
@@ -344,7 +342,10 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 		const ensureParentFolder = (
 			radioId: Radio.RadioId,
 			parentId: MediaNode.MediaNodeId | null,
-		): Effect.Effect<void, MediaLibraryServiceError | MediaLibraryNodeNotFoundError | MediaLibraryInvalidMoveError> =>
+		): Effect.Effect<
+			void,
+			MediaLibraryServiceError | MediaLibraryNodeNotFoundError | MediaLibraryInvalidMoveError
+		> =>
 			Effect.gen(function* () {
 				if (parentId == null) return
 				const parent = yield* getNodeOrFail(radioId, parentId)
@@ -365,12 +366,18 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 				const conditions = [
 					eq(mediaNodes.radioId, args.radioId),
 					eq(mediaNodes.name, args.name),
-					args.parentId == null ? isNull(mediaNodes.parentId) : eq(mediaNodes.parentId, args.parentId),
+					args.parentId == null
+						? isNull(mediaNodes.parentId)
+						: eq(mediaNodes.parentId, args.parentId),
 					args.excludeNodeId ? ne(mediaNodes.id, args.excludeNodeId) : undefined,
 				]
 
 				const rows = yield* Effect.tryPromise({
-					try: () => db.select({ id: mediaNodes.id }).from(mediaNodes).where(and(...conditions)),
+					try: () =>
+						db
+							.select({ id: mediaNodes.id })
+							.from(mediaNodes)
+							.where(and(...conditions)),
 					catch: (cause) =>
 						new MediaLibraryServiceError({
 							cause,
@@ -429,15 +436,13 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 										content: storageContent,
 									})
 									.pipe(
-										Effect.catchTag(
-											"StorageServiceError",
-											(cause) =>
-												Effect.fail(
-													new MediaLibraryServiceError({
-														cause,
-														message: "failed to store the uploaded audio file",
-													}),
-												),
+										Effect.catchTag("StorageServiceError", (cause) =>
+											Effect.fail(
+												new MediaLibraryServiceError({
+													cause,
+													message: "failed to store the uploaded audio file",
+												}),
+											),
 										),
 									),
 								metadata: metadataExtraction
@@ -454,24 +459,20 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 													message: "metadata extraction timed out after 5s",
 												}),
 										}),
-										Effect.catchTag(
-											"InvalidAudioFileError",
-											(error) =>
-												Effect.fail(
-													new MediaLibraryInvalidAudioFileError({
-														message: error.message,
-													}),
-												),
+										Effect.catchTag("InvalidAudioFileError", (error) =>
+											Effect.fail(
+												new MediaLibraryInvalidAudioFileError({
+													message: error.message,
+												}),
+											),
 										),
-										Effect.catchTag(
-											"MetadataExtractionError",
-											(cause) =>
-												Effect.fail(
-													new MediaLibraryServiceError({
-														cause,
-														message: "failed to extract metadata from the uploaded audio file",
-													}),
-												),
+										Effect.catchTag("MetadataExtractionError", (cause) =>
+											Effect.fail(
+												new MediaLibraryServiceError({
+													cause,
+													message: "failed to extract metadata from the uploaded audio file",
+												}),
+											),
 										),
 									),
 							},
@@ -505,19 +506,15 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 									content: Stream.make(extracted.coverArt.data),
 								})
 								.pipe(
-									Effect.catchTag(
-										"StorageServiceError",
-										(cause) =>
-											Effect.fail(
-												new MediaLibraryServiceError({
-													cause,
-													message: "failed to store extracted cover art",
-												}),
-											),
+									Effect.catchTag("StorageServiceError", (cause) =>
+										Effect.fail(
+											new MediaLibraryServiceError({
+												cause,
+												message: "failed to store extracted cover art",
+											}),
+										),
 									),
-									Effect.tapError(() =>
-										storage.deleteObject(storageKey).pipe(Effect.ignoreLogged),
-									),
+									Effect.tapError(() => storage.deleteObject(storageKey).pipe(Effect.ignoreLogged)),
 								)
 						}
 
@@ -551,7 +548,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 									coverArtStorageKey != null
 										? storage.deleteObject(coverArtStorageKey).pipe(Effect.ignoreLogged)
 										: Effect.void,
-									]),
+								]),
 							),
 						)
 
@@ -694,7 +691,9 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 			moveNode: ({ radioId, nodeId, parentId }) =>
 				Effect.gen(function* () {
 					const allNodes = yield* getAllNodes(radioId)
-					const node = allNodes.find((candidate) => candidate.media_nodes.id === nodeId)?.media_nodes
+					const node = allNodes.find(
+						(candidate) => candidate.media_nodes.id === nodeId,
+					)?.media_nodes
 					if (!node) {
 						return yield* new MediaLibraryNodeNotFoundError({ radioId, nodeId })
 					}
@@ -721,8 +720,8 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 							})
 						}
 						cursor =
-							allNodes.find((candidate) => candidate.media_nodes.id === cursor)?.media_nodes.parentId ??
-							null
+							allNodes.find((candidate) => candidate.media_nodes.id === cursor)?.media_nodes
+								.parentId ?? null
 					}
 
 					const updatedAt = yield* DateTime.nowAsDate
@@ -748,7 +747,9 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 			deleteNode: ({ radioId, nodeId }) =>
 				Effect.gen(function* () {
 					const allNodes = yield* getAllNodes(radioId)
-					const node = allNodes.find((candidate) => candidate.media_nodes.id === nodeId)?.media_nodes
+					const node = allNodes.find(
+						(candidate) => candidate.media_nodes.id === nodeId,
+					)?.media_nodes
 					if (!node) {
 						return yield* new MediaLibraryNodeNotFoundError({ radioId, nodeId })
 					}
@@ -773,25 +774,27 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 						if (descendants.has(candidate.media_nodes.id)) {
 							if (candidate.media_node_audio_metadata?.storageKey != null) {
 								yield* storage.deleteObject(candidate.media_node_audio_metadata.storageKey).pipe(
-									Effect.mapError((cause) =>
-										new MediaLibraryServiceError({
-											cause,
-											message: "failed to delete stored object while deleting media node",
-										}),
+									Effect.mapError(
+										(cause) =>
+											new MediaLibraryServiceError({
+												cause,
+												message: "failed to delete stored object while deleting media node",
+											}),
 									),
 								)
 							}
 							if (candidate.media_node_audio_metadata?.coverArtStorageKey != null) {
-								yield* storage.deleteObject(
-									candidate.media_node_audio_metadata.coverArtStorageKey,
-								).pipe(
-									Effect.mapError((cause) =>
-										new MediaLibraryServiceError({
-											cause,
-											message: "failed to delete stored cover art while deleting media node",
-										}),
-									),
-								)
+								yield* storage
+									.deleteObject(candidate.media_node_audio_metadata.coverArtStorageKey)
+									.pipe(
+										Effect.mapError(
+											(cause) =>
+												new MediaLibraryServiceError({
+													cause,
+													message: "failed to delete stored cover art while deleting media node",
+												}),
+										),
+									)
 							}
 						}
 					}

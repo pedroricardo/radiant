@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
 import * as SwitchPrimitive from "@radix-ui/react-switch"
+import * as React from "react"
 
 import { cn } from "../../lib/utils"
 
@@ -13,7 +13,7 @@ const Switch = React.forwardRef<
 		ref={ref}
 		className={cn(
 			"peer inline-flex h-8 w-14 items-center border-3 border-neo-black bg-surface-muted px-1 shadow-neo-badge outline-none data-[state=checked]:bg-signal-live",
-			className
+			className,
 		)}
 		{...props}
 	>

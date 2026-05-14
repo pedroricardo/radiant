@@ -1,5 +1,5 @@
+import { Chunk, Duration, Effect, Queue, Ref, Scope, Stream } from "effect"
 import * as AudioSource from "../../lib/AudioSource"
-import { Chunk, Duration, Effect, PubSub, Queue, Ref, Scope, Stream } from "effect"
 import {
 	DEFAULT_CHANNELS,
 	DEFAULT_CROSSFADE_DURATION,
@@ -200,16 +200,21 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 
 			return applyGain(frame, state.masterVolume)
 		})
-		const output = Stream.repeatEffect(nextFrame);
+		const output = Stream.repeatEffect(nextFrame)
 		const outputFactory = Stream.broadcastDynamic(output, {
 			strategy: "sliding",
-			capacity: frameLength
-		});
-		const asAudioSource = outputFactory.pipe(Effect.map((o) => new AudioSource.AudioSource({
-			sampleRate: config.sampleRate,
-			channels: config.channels,
-			stream: o,
-		})))
+			capacity: frameLength,
+		})
+		const asAudioSource = outputFactory.pipe(
+			Effect.map(
+				(o) =>
+					new AudioSource.AudioSource({
+						sampleRate: config.sampleRate,
+						channels: config.channels,
+						stream: o,
+					}),
+			),
+		)
 
 		return {
 			config,
@@ -218,7 +223,7 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 			setMasterVolume,
 			output: outputFactory,
 			outputUnsafe: output,
-			asAudioSource
+			asAudioSource,
 		}
 	}),
 }) {}

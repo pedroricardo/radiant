@@ -1,16 +1,16 @@
 import { HttpServer } from "@effect/platform"
-import * as Drizzle from "./services/Drizzle"
+import { Layer } from "effect"
 import { IcyEncoder, RadioManager } from "./services"
 import { AuthService } from "./services/AuthService/AuthService"
 import * as OAuth from "./services/AuthService/oauth"
 import { layerDrizzle as oauthStateCheckerLayer } from "./services/AuthService/oauth"
 import * as AccountLinkService from "./services/AuthService/oauth/AccountLinkService"
-import * as SessionService from "./services/SessionService"
-import * as UserRepository from "./services/UserRepository"
+import * as Drizzle from "./services/Drizzle"
 import * as MediaLibraryService from "./services/MediaLibraryService"
 import * as MetadataExtractionService from "./services/MetadataExtractionService"
+import * as SessionService from "./services/SessionService"
 import * as StorageService from "./services/StorageService"
-import { Layer } from "effect"
+import * as UserRepository from "./services/UserRepository"
 
 const drizzleConfigLayer = Drizzle.Config.fromConfig
 const dbLayer = Drizzle.layer.pipe(Layer.provide(drizzleConfigLayer))

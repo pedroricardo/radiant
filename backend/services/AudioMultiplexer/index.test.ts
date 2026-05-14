@@ -1,5 +1,5 @@
 import { describe, expect } from "bun:test"
-import { Chunk, Duration, Effect, Fiber, Layer, Stream, TestClock } from "effect"
+import { Chunk, Duration, Effect, Fiber, Stream, TestClock } from "effect"
 import { it } from "../../bun-test-effect"
 import * as AudioSource from "../../lib/AudioSource"
 import { AudioMultiplexer, MultiplexerSourceChannelMismatchError } from "./index"

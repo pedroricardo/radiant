@@ -1,13 +1,6 @@
-import {
-	Etag,
-	FileSystem,
-	HttpApiBuilder,
-	HttpApp,
-	HttpPlatform,
-	Path,
-} from "@effect/platform"
-import { Middleware, Router } from "@effect/platform/HttpApiBuilder"
+import { Etag, FileSystem, HttpApiBuilder, HttpApp, HttpPlatform, Path } from "@effect/platform"
 import type { Api } from "@effect/platform/HttpApi"
+import { Middleware, Router } from "@effect/platform/HttpApiBuilder"
 import * as RadiantClient from "@radiant/client"
 import { Effect } from "effect"
 
@@ -32,7 +25,7 @@ export const makeAuthenticatedFetch = (sessionId: `se_${string}`) =>
 					? Object.fromEntries(init.headers.entries())
 					: Array.isArray(init?.headers)
 						? Object.fromEntries(init.headers)
-						: init?.headers ?? {}),
+						: (init?.headers ?? {})),
 			})
 
 			return handler(

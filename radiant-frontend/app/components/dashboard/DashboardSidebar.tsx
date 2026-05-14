@@ -1,6 +1,5 @@
 import Image from "next/image"
 
-import favicon from "../../../public/favicon.svg"
 import radioStationSvg from "../../assets/icons/radio-station.svg"
 import settingsSvg from "../../assets/icons/settings.svg"
 import { groteskFont } from "../../lib/fonts"

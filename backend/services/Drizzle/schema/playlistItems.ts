@@ -1,5 +1,5 @@
-import { Playlist } from "../../../lib"
 import { integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core"
+import { Playlist } from "../../../lib"
 
 import { DbSchema } from ".."
 import { mediaNodeIdType, mediaNodes } from "./mediaNodes"

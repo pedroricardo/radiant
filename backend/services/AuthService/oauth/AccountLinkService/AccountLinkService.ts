@@ -1,9 +1,9 @@
+import { and, eq } from "drizzle-orm"
+import { Context, DateTime, Effect, Either, Layer } from "effect"
 import type { User } from "../../../../lib"
 import { Drizzle } from "../../../Drizzle"
 import { oauthAccounts } from "../../../Drizzle/schema/oauthAccountsLinks"
 import * as UserRepository from "../../../UserRepository"
-import { and, eq } from "drizzle-orm"
-import { Context, DateTime, Effect, Either, Layer } from "effect"
 import type { OAuthUserInfo } from "../OAuthUserInfo"
 import { AccountLinkError, AccountLinkLookupError, UserNotFoundError } from "./errors"
 

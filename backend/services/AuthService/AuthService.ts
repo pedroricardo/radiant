@@ -1,6 +1,6 @@
+import { Data, Effect } from "effect"
 import * as SessionService from "../SessionService"
 import * as UserRepository from "../UserRepository"
-import { Data, Effect } from "effect"
 import { AccountLinkService, OAuthProvidersRegistry, OAuthUserInfo } from "./oauth"
 
 export class OAuthProviderUnknown extends Data.TaggedError("OAuthProviderUnknown")<{

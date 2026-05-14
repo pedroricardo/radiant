@@ -152,7 +152,9 @@ export const mediaLibraryGroup = HttpApiGroup.make("mediaLibrary")
 			.middleware(Authorization),
 	)
 	.add(
-		HttpApiEndpoint.get("getCoverArt")`/radios/${RadioIdParam}/media-library/nodes/${NodeIdParam}/cover-art`
+		HttpApiEndpoint.get(
+			"getCoverArt",
+		)`/radios/${RadioIdParam}/media-library/nodes/${NodeIdParam}/cover-art`
 			.addSuccess(
 				Schema.Uint8ArrayFromSelf.pipe(
 					HttpApiSchema.withEncoding({
@@ -181,7 +183,9 @@ export const mediaLibraryGroup = HttpApiGroup.make("mediaLibrary")
 			.middleware(Authorization),
 	)
 	.add(
-		HttpApiEndpoint.patch("renameNode")`/radios/${RadioIdParam}/media-library/nodes/${NodeIdParam}/name`
+		HttpApiEndpoint.patch(
+			"renameNode",
+		)`/radios/${RadioIdParam}/media-library/nodes/${NodeIdParam}/name`
 			.setPayload(RenameNodeInput)
 			.addSuccess(MediaNode.MediaNode)
 			.addError(MediaLibraryNodeNotFoundError)
@@ -192,7 +196,9 @@ export const mediaLibraryGroup = HttpApiGroup.make("mediaLibrary")
 			.middleware(Authorization),
 	)
 	.add(
-		HttpApiEndpoint.patch("moveNode")`/radios/${RadioIdParam}/media-library/nodes/${NodeIdParam}/parent`
+		HttpApiEndpoint.patch(
+			"moveNode",
+		)`/radios/${RadioIdParam}/media-library/nodes/${NodeIdParam}/parent`
 			.setPayload(MoveNodeInput)
 			.addSuccess(MediaNode.MediaNode)
 			.addError(MediaLibraryNodeNotFoundError)

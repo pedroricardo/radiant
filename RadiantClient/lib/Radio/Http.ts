@@ -1,14 +1,13 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 import { RadioDescription, RadioId, RadioInfo, RadioName, RadioTimezone } from "."
-import * as Errors from "./errors"
 import * as AudioMultiplexerErrors from "../AudioMultiplexerErrors"
 import * as AudioSourceErrors from "../AudioSourceErrors"
-import * as IcyEncoderErrors from "../IcyEncoderErrors"
 import { Authorization } from "../Auth"
+import * as IcyEncoderErrors from "../IcyEncoderErrors"
+import * as Errors from "./errors"
 
 const RadioIdParam = HttpApiSchema.param("radioId", RadioId)
-
 
 export const CreateRadioRequest = Schema.Struct({
 	name: RadioName,
@@ -33,7 +32,7 @@ export const radioGroup = HttpApiGroup.make("radio")
 		HttpApiEndpoint.get("list")`/`
 			.addSuccess(Schema.Array(RadioInfo))
 			.addError(Errors.RadioManagerDatabaseError)
-			.middleware(Authorization)
+			.middleware(Authorization),
 	)
 	.add(
 		HttpApiEndpoint.post("create")`/`

@@ -18,7 +18,7 @@ const statusPillVariants = cva(
 		defaultVariants: {
 			variant: "muted",
 		},
-	}
+	},
 )
 
 export function StatusPill({

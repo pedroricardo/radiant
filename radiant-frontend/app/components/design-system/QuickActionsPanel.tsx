@@ -1,6 +1,19 @@
 import { Button } from "../ui/Button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/Dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/DropdownMenu"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "../ui/Dialog"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "../ui/DropdownMenu"
 import { Input } from "../ui/Input"
 import { Label } from "../ui/label"
 import { Panel } from "./Panel"
@@ -17,7 +30,8 @@ export function QuickActionsPanel() {
 						<DialogHeader>
 							<DialogTitle>Interrupt transmission</DialogTitle>
 							<DialogDescription>
-								Prepare the manual interruption flow. The actual audio selection will be wired later.
+								Prepare the manual interruption flow. The actual audio selection will be wired
+								later.
 							</DialogDescription>
 						</DialogHeader>
 						<div className="space-y-3">

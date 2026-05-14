@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
+import * as React from "react"
 
 import { tomorrowFont } from "../../lib/fonts"
 import { cn } from "../../lib/utils"
@@ -32,12 +32,17 @@ const DialogContent = React.forwardRef<
 		<DialogOverlay />
 		<DialogPrimitive.Content
 			ref={ref}
-			className={cn("fixed top-1/2 left-1/2 z-50 w-[min(92vw,36rem)] -translate-x-1/2 -translate-y-1/2 border-3 border-neo-black bg-surface p-6 shadow-neo-panel outline-none", className)}
+			className={cn(
+				"fixed top-1/2 left-1/2 z-50 w-[min(92vw,36rem)] -translate-x-1/2 -translate-y-1/2 border-3 border-neo-black bg-surface p-6 shadow-neo-panel outline-none",
+				className,
+			)}
 			{...props}
 		>
 			{children}
 			<DialogPrimitive.Close asChild>
-				<Button variant="secondary" size="icon" className="absolute top-4 right-4">×</Button>
+				<Button variant="secondary" size="icon" className="absolute top-4 right-4">
+					×
+				</Button>
 			</DialogPrimitive.Close>
 		</DialogPrimitive.Content>
 	</DialogPortal>
@@ -56,7 +61,14 @@ const DialogTitle = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Title>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
-	<DialogPrimitive.Title ref={ref} className={cn(`text-xl font-extrabold uppercase text-neo-black ${tomorrowFont.className}`, className)} {...props} />
+	<DialogPrimitive.Title
+		ref={ref}
+		className={cn(
+			`text-xl font-extrabold uppercase text-neo-black ${tomorrowFont.className}`,
+			className,
+		)}
+		{...props}
+	/>
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
@@ -64,8 +76,23 @@ const DialogDescription = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Description>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
-	<DialogPrimitive.Description ref={ref} className={cn("text-sm leading-6 text-black/70", className)} {...props} />
+	<DialogPrimitive.Description
+		ref={ref}
+		className={cn("text-sm leading-6 text-black/70", className)}
+		{...props}
+	/>
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
-export { Dialog, DialogPortal, DialogOverlay, DialogTrigger, DialogClose, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription }
+export {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogOverlay,
+	DialogPortal,
+	DialogTitle,
+	DialogTrigger,
+}

@@ -1,5 +1,5 @@
-import type { User } from "../../../../lib"
 import { Data } from "effect"
+import type { User } from "../../../../lib"
 import type { OAuthUserInfo } from "../OAuthUserInfo"
 
 export class UserNotFoundError extends Data.TaggedError("UserNotFoundError")<{

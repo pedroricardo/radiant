@@ -17,7 +17,7 @@ const VerticalSlider = React.forwardRef<HTMLInputElement, VerticalSliderProps>(
 			<div
 				className={cn(
 					"relative h-[132px] w-[22px] overflow-hidden border-3 border-neo-black bg-neo-paper shadow-neo-badge",
-					className
+					className,
 				)}
 			>
 				<div className="absolute inset-0 bg-neo-paper" />
@@ -38,7 +38,7 @@ const VerticalSlider = React.forwardRef<HTMLInputElement, VerticalSliderProps>(
 				/>
 			</div>
 		)
-	}
+	},
 )
 
 VerticalSlider.displayName = "VerticalSlider"

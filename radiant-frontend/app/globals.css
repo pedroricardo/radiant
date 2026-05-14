@@ -1,174 +1,176 @@
 @import "tailwindcss";
 
 :root {
-  --background: #dce9ff;
-  --foreground: #050505;
+	--background: #dce9ff;
+	--foreground: #050505;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-grotesk);
-  --font-mono: var(--font-tomorrow);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--font-sans: var(--font-grotesk);
+	--font-mono: var(--font-tomorrow);
 
-  /* Radiant semantic palette */
-  --color-canvas: #dce9ff;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f6f0e4;
-  --color-surface-strong: #050505;
-  --color-surface-accent: #8bb9ef;
-  --color-surface-live: #ff4d3d;
+	/* Radiant semantic palette */
+	--color-canvas: #dce9ff;
+	--color-surface: #ffffff;
+	--color-surface-muted: #f6f0e4;
+	--color-surface-strong: #050505;
+	--color-surface-accent: #8bb9ef;
+	--color-surface-live: #ff4d3d;
 
-  --color-ink: #050505;
-  --color-ink-inverse: #ffffff;
-  --color-ink-soft: rgb(5 5 5 / 0.6);
-  --color-ink-muted: rgb(5 5 5 / 0.75);
+	--color-ink: #050505;
+	--color-ink-inverse: #ffffff;
+	--color-ink-soft: rgb(5 5 5 / 0.6);
+	--color-ink-muted: rgb(5 5 5 / 0.75);
 
-  --color-signal: #58efb0;
-  --color-signal-warm: #ff8f3f;
-  --color-signal-live: #ff4d3d;
-  --color-signal-info: #8bb9ef;
-  --color-signal-success: #58efb0;
+	--color-signal: #58efb0;
+	--color-signal-warm: #ff8f3f;
+	--color-signal-live: #ff4d3d;
+	--color-signal-info: #8bb9ef;
+	--color-signal-success: #58efb0;
 
-  --color-line-strong: #050505;
-  --color-line-soft: rgb(5 5 5 / 0.2);
+	--color-line-strong: #050505;
+	--color-line-soft: rgb(5 5 5 / 0.2);
 
-  /* Backwards-compatible aliases for existing classes */
-  --color-neo-black: var(--color-ink);
-  --color-neo-paper: var(--color-surface-muted);
-  --color-neo-mint: var(--color-signal);
-  --color-neo-orange: var(--color-signal-warm);
-  --color-neo-red: var(--color-signal-live);
-  --color-neo-white: var(--color-surface);
+	/* Backwards-compatible aliases for existing classes */
+	--color-neo-black: var(--color-ink);
+	--color-neo-paper: var(--color-surface-muted);
+	--color-neo-mint: var(--color-signal);
+	--color-neo-orange: var(--color-signal-warm);
+	--color-neo-red: var(--color-signal-live);
+	--color-neo-white: var(--color-surface);
 
-  --spacing-grid: 28px;
-  --spacing-shadow-sm: 4px;
-  --spacing-shadow-md: 6px;
-  --spacing-shadow-lg: 8px;
-  --spacing-shadow-xl: 10px;
+	--spacing-grid: 28px;
+	--spacing-shadow-sm: 4px;
+	--spacing-shadow-md: 6px;
+	--spacing-shadow-lg: 8px;
+	--spacing-shadow-xl: 10px;
 
-  --radius-neo: 0px;
-  --radius-panel: 0px;
-  --radius-control: 0px;
+	--radius-neo: 0px;
+	--radius-panel: 0px;
+	--radius-control: 0px;
 
-  --text-kicker: 0.72rem;
-  --text-micro: 0.7rem;
-  --text-widget-title: 2rem;
-  --text-app-title: 2.75rem;
-  --text-panel-title: 1.35rem;
-  --text-toolbar: 0.8rem;
-  --text-status: 0.72rem;
+	--text-kicker: 0.72rem;
+	--text-micro: 0.7rem;
+	--text-widget-title: 2rem;
+	--text-app-title: 2.75rem;
+	--text-panel-title: 1.35rem;
+	--text-toolbar: 0.8rem;
+	--text-status: 0.72rem;
 
-  --tracking-kicker: 0.22em;
-  --tracking-micro: 0.14em;
-  --tracking-wide-brutal: 0.12em;
+	--tracking-kicker: 0.22em;
+	--tracking-micro: 0.14em;
+	--tracking-wide-brutal: 0.12em;
 
-  --border-heavy: 4px;
-  --border-mid: 3px;
-  --border-thin: 2px;
-  --border-panel: var(--border-mid);
-  --border-control: var(--border-mid);
-  --border-hairline: 1px;
+	--border-heavy: 4px;
+	--border-mid: 3px;
+	--border-thin: 2px;
+	--border-panel: var(--border-mid);
+	--border-control: var(--border-mid);
+	--border-hairline: 1px;
 
-  --shadow-neo-panel: 10px 10px 0 0 #000;
-  --shadow-neo-panel-mobile: 7px 7px 0 0 #000;
-  --shadow-neo-kicker: 6px 6px 0 0 #000;
-  --shadow-neo-badge: 4px 4px 0 0 #000;
-  --shadow-neo-button-light: 8px 8px 0 0 #fff;
-  --shadow-neo-button-accent: 8px 8px 0 0 #ff8f3f;
-  --shadow-neo-button-accent-hover: 12px 12px 0 0 #000;
-  --shadow-neo-button-dark: 6px 6px 0 0 #ff8f3f;
+	--shadow-neo-panel: 10px 10px 0 0 #000;
+	--shadow-neo-panel-mobile: 7px 7px 0 0 #000;
+	--shadow-neo-kicker: 6px 6px 0 0 #000;
+	--shadow-neo-badge: 4px 4px 0 0 #000;
+	--shadow-neo-button-light: 8px 8px 0 0 #fff;
+	--shadow-neo-button-accent: 8px 8px 0 0 #ff8f3f;
+	--shadow-neo-button-accent-hover: 12px 12px 0 0 #000;
+	--shadow-neo-button-dark: 6px 6px 0 0 #ff8f3f;
 
-  --shadow-panel: var(--shadow-neo-panel);
-  --shadow-panel-mobile: var(--shadow-neo-panel-mobile);
-  --shadow-control: var(--shadow-neo-badge);
-  --shadow-kicker: var(--shadow-neo-kicker);
-  --shadow-button-accent: var(--shadow-neo-button-accent);
-  --shadow-button-dark: var(--shadow-neo-button-dark);
+	--shadow-panel: var(--shadow-neo-panel);
+	--shadow-panel-mobile: var(--shadow-neo-panel-mobile);
+	--shadow-control: var(--shadow-neo-badge);
+	--shadow-kicker: var(--shadow-neo-kicker);
+	--shadow-button-accent: var(--shadow-neo-button-accent);
+	--shadow-button-dark: var(--shadow-neo-button-dark);
 
-  --breakpoint-dashboard: 120rem;
-
+	--breakpoint-dashboard: 120rem;
 }
 
 * {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 html {
-  background: var(--color-canvas);
+	background: var(--color-canvas);
 }
 
 body {
-  color: #000;
-  font-family: var(--font-grotesk), Arial, Helvetica, sans-serif;
-  background: var(--color-canvas);
+	color: #000;
+	font-family: var(--font-grotesk), Arial, Helvetica, sans-serif;
+	background: var(--color-canvas);
 }
 
 a {
-  color: inherit;
+	color: inherit;
 }
 
 .preview-slider {
-  appearance: none;
-  -webkit-appearance: none;
-  height: 18px;
-  border: var(--border-mid) solid var(--color-neo-black);
-  background:
-    linear-gradient(to right, var(--color-neo-mint) 0 72%, var(--color-neo-paper) 72% 100%);
-  box-shadow: var(--shadow-neo-badge);
+	appearance: none;
+	-webkit-appearance: none;
+	height: 18px;
+	border: var(--border-mid) solid var(--color-neo-black);
+	background: linear-gradient(
+		to right,
+		var(--color-neo-mint) 0 72%,
+		var(--color-neo-paper) 72% 100%
+	);
+	box-shadow: var(--shadow-neo-badge);
 }
 
 .preview-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 32px;
-  border: var(--border-mid) solid var(--color-neo-black);
-  background: var(--color-neo-orange);
-  cursor: pointer;
+	-webkit-appearance: none;
+	appearance: none;
+	width: 18px;
+	height: 32px;
+	border: var(--border-mid) solid var(--color-neo-black);
+	background: var(--color-neo-orange);
+	cursor: pointer;
 }
 
 .preview-slider::-moz-range-thumb {
-  width: 18px;
-  height: 32px;
-  border: var(--border-mid) solid var(--color-neo-black);
-  background: var(--color-neo-orange);
-  cursor: pointer;
+	width: 18px;
+	height: 32px;
+	border: var(--border-mid) solid var(--color-neo-black);
+	background: var(--color-neo-orange);
+	cursor: pointer;
 }
 
 .preview-slider--vertical {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin: 0;
-  width: 132px;
-  height: 18px;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  transform: translate(-50%, -50%) rotate(-90deg);
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	margin: 0;
+	width: 132px;
+	height: 18px;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	transform: translate(-50%, -50%) rotate(-90deg);
 }
 
 .preview-slider--vertical::-webkit-slider-runnable-track {
-  height: 18px;
-  background: transparent;
-  border: 0;
+	height: 18px;
+	background: transparent;
+	border: 0;
 }
 
 .preview-slider--vertical::-moz-range-track {
-  height: 18px;
-  background: transparent;
-  border: 0;
+	height: 18px;
+	background: transparent;
+	border: 0;
 }
 
 .preview-slider--vertical::-webkit-slider-thumb {
-  width: 18px;
-  height: 18px;
+	width: 18px;
+	height: 18px;
 }
 
 .preview-slider--vertical::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+	width: 18px;
+	height: 18px;
 }
 img {
 	user-select: none;

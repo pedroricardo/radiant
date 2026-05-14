@@ -1,3 +1,5 @@
+import { eq } from "drizzle-orm"
+import { DateTime, Effect, Option } from "effect"
 import { UserRepositoryError } from "../../../RadiantClient/lib/User/Http"
 import { User } from "../../lib"
 import { Drizzle } from "../Drizzle"
@@ -5,8 +7,6 @@ import { mediaNodeAudioMetadata } from "../Drizzle/schema/mediaNodeAudioMetadata
 import { mediaNodes } from "../Drizzle/schema/mediaNodes"
 import { radios } from "../Drizzle/schema/radios"
 import { users as usersTable } from "../Drizzle/schema/user"
-import { eq } from "drizzle-orm"
-import { Data, DateTime, Effect, Option } from "effect"
 
 export class UserRepository extends Effect.Service<UserRepository>()("UserRepository", {
 	accessors: true,

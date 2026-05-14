@@ -1,11 +1,11 @@
+import { RadiantClient } from "@radiant/client"
 import { Option } from "effect"
 import { redirect } from "next/navigation"
-import { RadiantClient } from "@radiant/client"
 
-import { getCurrentUser } from "../lib/auth"
-import { runServerEffect } from "../lib/serverApiClient"
 import { DashboardRadioPicker } from "../components/dashboard/DashboardRadioPicker"
 import { DashboardShell } from "../components/dashboard/DashboardShell"
+import { getCurrentUser } from "../lib/auth"
+import { runServerEffect } from "../lib/serverApiClient"
 
 export default async function DashboardPage() {
 	const user = await runServerEffect(getCurrentUser())

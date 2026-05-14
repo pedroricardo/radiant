@@ -3,8 +3,8 @@ import * as RadiantClient from "@radiant/client"
 import { CurrentUser } from "@radiant/client/contract"
 import { Effect } from "effect"
 
-import { MediaLibraryService } from "../services/MediaLibraryService"
 import { RadioManager } from "../services"
+import { MediaLibraryService } from "../services/MediaLibraryService"
 
 const ensureRadioOwner = Effect.fn("http.mediaLibrary.ensureRadioOwner")(function* (
 	radioId: RadiantClient.Radio.RadioId,
@@ -30,23 +30,19 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 			)
 			.handle(
 				"uploadFile",
-				Effect.fn("http.mediaLibrary.uploadFile")(function* ({
-					path: { radioId },
-					urlParams,
-				}) {
+				Effect.fn("http.mediaLibrary.uploadFile")(function* ({ path: { radioId }, urlParams }) {
 					yield* ensureRadioOwner(radioId)
 
 					const mediaLibrary = yield* MediaLibraryService
 					const request = yield* HttpServerRequest.HttpServerRequest
 
-					return yield* mediaLibrary
-						.uploadAudioFile({
-							radioId,
-							parentId: urlParams.parentId ?? null,
-							name: urlParams.name,
-							contentType: request.headers["content-type"],
-							content: request.stream,
-						})
+					return yield* mediaLibrary.uploadAudioFile({
+						radioId,
+						parentId: urlParams.parentId ?? null,
+						name: urlParams.name,
+						contentType: request.headers["content-type"],
+						content: request.stream,
+					})
 				}),
 			)
 			.handle(
@@ -67,10 +63,7 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 			)
 			.handle(
 				"createFolder",
-				Effect.fn("http.mediaLibrary.createFolder")(function* ({
-					path: { radioId },
-					payload,
-				}) {
+				Effect.fn("http.mediaLibrary.createFolder")(function* ({ path: { radioId }, payload }) {
 					yield* ensureRadioOwner(radioId)
 
 					const mediaLibrary = yield* MediaLibraryService
@@ -99,10 +92,7 @@ export const mediaLibraryGroupLive = HttpApiBuilder.group(
 			)
 			.handle(
 				"moveNode",
-				Effect.fn("http.mediaLibrary.moveNode")(function* ({
-					path: { radioId, nodeId },
-					payload,
-				}) {
+				Effect.fn("http.mediaLibrary.moveNode")(function* ({ path: { radioId, nodeId }, payload }) {
 					yield* ensureRadioOwner(radioId)
 
 					const mediaLibrary = yield* MediaLibraryService

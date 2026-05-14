@@ -15,10 +15,17 @@ export function StatCard(props: StatCardProps) {
 	return (
 		<Card className={cn("bg-white", props.accentClassName, props.className)}>
 			<CardContent className="p-4">
-				<p className={`text-[10px] font-extrabold uppercase tracking-[0.22em] text-black/65 ${groteskFont.className}`}>
+				<p
+					className={`text-[10px] font-extrabold uppercase tracking-[0.22em] text-black/65 ${groteskFont.className}`}
+				>
 					{props.label}
 				</p>
-				<p className={cn(`${tomorrowFont.className} mt-2 text-xl font-extrabold uppercase text-neo-black`, props.valueClassName)}>
+				<p
+					className={cn(
+						`${tomorrowFont.className} mt-2 text-xl font-extrabold uppercase text-neo-black`,
+						props.valueClassName,
+					)}
+				>
 					{props.children}
 				</p>
 			</CardContent>

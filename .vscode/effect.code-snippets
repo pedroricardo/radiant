@@ -154,11 +154,7 @@
 	},
 	"Effect Tagged Error": {
 		"prefix": "tagerr",
-		"body": [
-			"export class $1 extends Data.TaggedError(",
-			"  \"$1\",",
-			") {}"
-		],
+		"body": ["export class $1 extends Data.TaggedError(", "  \"$1\",", ") {}"],
 	},
 	"Effect Http Error": {
 		"prefix": "httperr",
@@ -170,7 +166,7 @@
 			"    cause: Schema.Unknown,",
 			"  },",
 			"  HttpApiSchema.annotations({ status: 500 }),",
-			") {}"
+			") {}",
 		],
 	},
 }

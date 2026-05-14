@@ -1,8 +1,9 @@
 "use client"
 
-import { Atom, Result, useAtomInitialValues, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { Atom, Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
 import { Cause } from "effect"
 
+import { Radio } from "@radiant/client"
 import { radioListAtom } from "../../lib/atoms/radiantClient"
 import { groteskFont, tomorrowFont } from "../../lib/fonts"
 import { Badge } from "../ui/Badge"
@@ -10,14 +11,13 @@ import { Button } from "../ui/Button"
 import { Skeleton } from "../ui/Skeleton"
 import { CreateRadioDialog } from "./CreateRadioDialog"
 import { RadioTile } from "./RadioTile"
-import { Radio } from "@radiant/client"
 
 type DashboardRadioPickerProps = {
 	initialRadios: ReadonlyArray<typeof Radio.RadioInfo.Type>
 }
 
 export function DashboardRadioPicker({ initialRadios }: DashboardRadioPickerProps) {
-	const r = Atom.withServerValue(radioListAtom, () => Result.success(initialRadios));
+	const r = Atom.withServerValue(radioListAtom, () => Result.success(initialRadios))
 	const radios = useAtomValue(r)
 	const refreshRadios = useAtomRefresh(radioListAtom)
 
@@ -48,7 +48,7 @@ export function DashboardRadioPicker({ initialRadios }: DashboardRadioPickerProp
 					</div>
 				),
 				onFailure: (failure) => (
-					<div className="mt-12 flex max-w-xl flex-col items-center gap-4 border-3 border-neo-black bg-[#ffb4a8] px-6 py-6 text-center shadow-neo-badge">
+					<div className="mt-12 flex max-w-2xl flex-col items-center gap-4 border-3 border-neo-black bg-[#ffb4a8] px-6 py-6 text-center shadow-neo-badge">
 						<p className={`text-base font-bold text-neo-black ${groteskFont.className}`}>
 							Nao foi possivel carregar as radios.
 						</p>
@@ -66,13 +66,7 @@ export function DashboardRadioPicker({ initialRadios }: DashboardRadioPickerProp
 					<>
 						{radioList.length > 0 ? (
 							<div className="mt-10">
-								<CreateRadioDialog
-									trigger={
-										<Button variant="default">
-											Criar radio
-										</Button>
-									}
-								/>
+								<CreateRadioDialog trigger={<Button variant="default">Criar radio</Button>} />
 							</div>
 						) : null}
 
@@ -84,17 +78,13 @@ export function DashboardRadioPicker({ initialRadios }: DashboardRadioPickerProp
 
 						{radioList.length === 0 ? (
 							<div className="mt-12 flex flex-col items-center gap-4 border-3 border-neo-black bg-neo-paper px-6 py-6 shadow-neo-badge">
-								<p className={`select-none text-center text-base text-black/70 ${groteskFont.className}`}>
+								<p
+									className={`select-none text-center text-base text-black/70 ${groteskFont.className}`}
+								>
 									Ainda nao tens radios. Cria a primeira estacao para comecar.
 								</p>
 
-								<CreateRadioDialog
-									trigger={
-										<Button variant="default">
-											Criar radio
-										</Button>
-									}
-								/>
+								<CreateRadioDialog trigger={<Button variant="default">Criar radio</Button>} />
 							</div>
 						) : null}
 					</>

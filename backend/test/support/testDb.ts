@@ -124,7 +124,9 @@ const sqlLayer = Layer.scoped(
 
 const drizzleLayer = Layer.effect(
 	Drizzle,
-	Effect.flatMap(TestSql, (sql) => Effect.promise(async () => (await import("drizzle-orm/bun-sql")).drizzle(sql))),
+	Effect.flatMap(TestSql, (sql) =>
+		Effect.promise(async () => (await import("drizzle-orm/bun-sql")).drizzle(sql)),
+	),
 ).pipe(Layer.provideMerge(sqlLayer))
 
 export const TestDbLayer = Layer.mergeAll(sqlLayer, drizzleLayer)

@@ -2,29 +2,53 @@
 
 import { notFound } from "next/navigation"
 import matsuriCover from "../assets/まつり-foto.png"
-import { RadiantLogo } from "../components/RadiantLogo"
-import { PreviewCard } from "../components/design-system/PreviewCard"
 import { HealthPanel } from "../components/design-system/HealthPanel"
 import { LibrarySnapshotPanel } from "../components/design-system/LibrarySnapshotPanel"
 import { PageHeader } from "../components/design-system/PageHeader"
 import { Panel } from "../components/design-system/Panel"
 import { PanelGrid } from "../components/design-system/PanelGrid"
+import { PreviewCard } from "../components/design-system/PreviewCard"
 import { QuickActionsPanel } from "../components/design-system/QuickActionsPanel"
 import { ScheduleMiniPanel } from "../components/design-system/ScheduleMiniPanel"
 import { StatusPill } from "../components/design-system/StatusPill"
 import { UpcomingPanel } from "../components/design-system/UpcomingPanel"
+import { RadiantLogo } from "../components/RadiantLogo"
 import { Badge } from "../components/ui/Badge"
 import { Button } from "../components/ui/Button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/Card"
+import { Card } from "../components/ui/Card"
 import { Checkbox } from "../components/ui/Checkbox"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/Dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/DropdownMenu"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "../components/ui/Dialog"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "../components/ui/DropdownMenu"
 import { EmptyState } from "../components/ui/EmptyState"
 import { Input } from "../components/ui/Input"
 import { Label } from "../components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/Popover"
 import { ScrollArea } from "../components/ui/ScrollArea"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "../components/ui/Select"
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectLabel,
+	SelectSeparator,
+	SelectTrigger,
+	SelectValue,
+} from "../components/ui/Select"
 import { Separator } from "../components/ui/Separator"
 import { Skeleton } from "../components/ui/Skeleton"
 import { StatCard } from "../components/ui/StatCard"
@@ -40,10 +64,14 @@ const isDesignSystemEnabled = process.env.NEXT_PUBLIC_ENABLE_DESIGN_SYSTEM === "
 function SectionTitle(props: { title: string; description: string }) {
 	return (
 		<div className="mb-4">
-			<p className={`text-[10px] font-extrabold uppercase tracking-[0.22em] text-black/55 ${groteskFont.className}`}>
+			<p
+				className={`text-[10px] font-extrabold uppercase tracking-[0.22em] text-black/55 ${groteskFont.className}`}
+			>
 				Showcase
 			</p>
-			<h2 className={`${tomorrowFont.className} mt-2 text-2xl font-extrabold uppercase text-neo-black`}>
+			<h2
+				className={`${tomorrowFont.className} mt-2 text-2xl font-extrabold uppercase text-neo-black`}
+			>
 				{props.title}
 			</h2>
 			<p className={`${groteskFont.className} mt-2 max-w-3xl text-sm leading-6 text-black/70`}>
@@ -81,7 +109,10 @@ export default function DesignSystemPage() {
 
 				<div className="space-y-8 p-4 sm:p-6">
 					<Panel title="Foundation" kicker="Brand and actions">
-						<SectionTitle title="Buttons and badges" description="Core action and status primitives with semantic variants." />
+						<SectionTitle
+							title="Buttons and badges"
+							description="Core action and status primitives with semantic variants."
+						/>
 						<div className="flex flex-wrap gap-3">
 							<Button>Primary action</Button>
 							<Button variant="secondary">Secondary</Button>
@@ -100,7 +131,10 @@ export default function DesignSystemPage() {
 
 					<PanelGrid>
 						<Panel title="Inputs" kicker="Forms" className="lg:col-span-6">
-							<SectionTitle title="Field controls" description="Form controls that will be reused across dashboard configuration, scheduling, playlists, and media operations." />
+							<SectionTitle
+								title="Field controls"
+								description="Form controls that will be reused across dashboard configuration, scheduling, playlists, and media operations."
+							/>
 							<div className="grid gap-4">
 								<div className="space-y-2">
 									<Label htmlFor="radio-name">Radio name</Label>
@@ -108,7 +142,10 @@ export default function DesignSystemPage() {
 								</div>
 								<div className="space-y-2">
 									<Label htmlFor="radio-description">Description</Label>
-									<Textarea id="radio-description" placeholder="Night-time rotation with deterministic playout." />
+									<Textarea
+										id="radio-description"
+										placeholder="Night-time rotation with deterministic playout."
+									/>
 								</div>
 								<div className="grid gap-4 sm:grid-cols-2">
 									<div className="space-y-2">
@@ -145,7 +182,10 @@ export default function DesignSystemPage() {
 						</Panel>
 
 						<Panel title="Navigation" kicker="Switching views" className="lg:col-span-6">
-							<SectionTitle title="Tabs and scroll areas" description="Layout primitives for dense application views and long content zones." />
+							<SectionTitle
+								title="Tabs and scroll areas"
+								description="Layout primitives for dense application views and long content zones."
+							/>
 							<Tabs defaultValue="overview">
 								<TabsList>
 									<TabsTrigger value="overview">Overview</TabsTrigger>
@@ -157,7 +197,9 @@ export default function DesignSystemPage() {
 										<div className="space-y-3">
 											{Array.from({ length: 8 }).map((_, index) => (
 												<Card key={index} className="bg-white px-3 py-3">
-													<p className={`${groteskFont.className} text-sm font-bold tracking-tight text-neo-black`}>
+													<p
+														className={`${groteskFont.className} text-sm font-bold tracking-tight text-neo-black`}
+													>
 														Scrollable event row {index + 1}
 													</p>
 												</Card>
@@ -166,10 +208,16 @@ export default function DesignSystemPage() {
 									</ScrollArea>
 								</TabsContent>
 								<TabsContent value="calendar">
-									<EmptyState title="Calendar panel" description="The schedule editor will land here with custom lanes and block handles." />
+									<EmptyState
+										title="Calendar panel"
+										description="The schedule editor will land here with custom lanes and block handles."
+									/>
 								</TabsContent>
 								<TabsContent value="library">
-									<EmptyState title="Library panel" description="VFS browsing, uploads, and metadata panels will reuse the same shell." />
+									<EmptyState
+										title="Library panel"
+										description="VFS browsing, uploads, and metadata panels will reuse the same shell."
+									/>
 								</TabsContent>
 							</Tabs>
 						</Panel>
@@ -177,7 +225,10 @@ export default function DesignSystemPage() {
 
 					<PanelGrid>
 						<Panel title="Overlays" kicker="Menus and dialogs" className="lg:col-span-6">
-							<SectionTitle title="Interactive surfaces" description="Radix-based building blocks for menus, contextual actions, and modal workflows." />
+							<SectionTitle
+								title="Interactive surfaces"
+								description="Radix-based building blocks for menus, contextual actions, and modal workflows."
+							/>
 							<div className="flex flex-wrap gap-3">
 								<Dialog>
 									<DialogTrigger asChild>
@@ -217,7 +268,11 @@ export default function DesignSystemPage() {
 										<Button variant="secondary">Open popover</Button>
 									</PopoverTrigger>
 									<PopoverContent>
-										<p className={`${tomorrowFont.className} text-sm font-extrabold uppercase text-neo-black`}>Mini inspector</p>
+										<p
+											className={`${tomorrowFont.className} text-sm font-extrabold uppercase text-neo-black`}
+										>
+											Mini inspector
+										</p>
 										<p className={`${groteskFont.className} mt-2 text-sm leading-6 text-black/70`}>
 											Use this for compact metadata, block info, and panel-specific tools.
 										</p>
@@ -234,29 +289,49 @@ export default function DesignSystemPage() {
 						</Panel>
 
 						<Panel title="Feedback" kicker="States" className="lg:col-span-6">
-							<SectionTitle title="Loading, empty, and stat states" description="Feedback patterns for async panels, empty data, and compact metrics." />
+							<SectionTitle
+								title="Loading, empty, and stat states"
+								description="Feedback patterns for async panels, empty data, and compact metrics."
+							/>
 							<div className="grid gap-4 md:grid-cols-2">
 								<div className="space-y-3">
 									<Skeleton className="h-12" />
 									<Skeleton className="h-24" />
 									<Skeleton className="h-10 w-1/2" />
 								</div>
-								<EmptyState title="No playlist selected" description="Pick a playlist from the library or create a new one to start programming this slot." />
+								<EmptyState
+									title="No playlist selected"
+									description="Pick a playlist from the library or create a new one to start programming this slot."
+								/>
 							</div>
 							<Separator className="my-6" />
 							<div className="grid gap-4 sm:grid-cols-3">
-								<StatCard label="Sync" accentClassName="bg-neo-mint">Locked</StatCard>
-								<StatCard label="Listeners" accentClassName="bg-neo-paper">128</StatCard>
-								<StatCard label="Warnings" accentClassName="bg-neo-orange">02</StatCard>
+								<StatCard label="Sync" accentClassName="bg-neo-mint">
+									Locked
+								</StatCard>
+								<StatCard label="Listeners" accentClassName="bg-neo-paper">
+									128
+								</StatCard>
+								<StatCard label="Warnings" accentClassName="bg-neo-orange">
+									02
+								</StatCard>
 							</div>
 						</Panel>
 					</PanelGrid>
 
 					<Panel title="Specialized Controls" kicker="Audio and transport">
-						<SectionTitle title="Vertical slider" description="Audio-centric control for preview volume, mixer strips, or other level-based tooling." />
+						<SectionTitle
+							title="Vertical slider"
+							description="Audio-centric control for preview volume, mixer strips, or other level-based tooling."
+						/>
 						<div className="flex items-end gap-8">
 							<VerticalSlider value={72} onChange={() => {}} label="Preview volume" />
-							<VerticalSlider value={40} onChange={() => {}} label="Jingle volume" className="bg-surface" />
+							<VerticalSlider
+								value={40}
+								onChange={() => {}}
+								label="Jingle volume"
+								className="bg-surface"
+							/>
 							<div className="space-y-2">
 								<StatusPill variant="success">Preview locked</StatusPill>
 								<StatusPill variant="live">On air</StatusPill>
@@ -266,7 +341,10 @@ export default function DesignSystemPage() {
 					</Panel>
 
 					<div className="space-y-8">
-						<SectionTitle title="Dashboard Building Blocks" description="These are the real product panels that the overview dashboard is already built from." />
+						<SectionTitle
+							title="Dashboard Building Blocks"
+							description="These are the real product panels that the overview dashboard is already built from."
+						/>
 						<PanelGrid>
 							<div className="lg:col-span-8">
 								<PreviewCard

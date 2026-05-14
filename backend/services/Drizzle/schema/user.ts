@@ -1,6 +1,6 @@
-import { User } from "../../../lib"
 import { bigint, pgTable, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core"
 import { DbSchema } from ".."
+import { User } from "../../../lib"
 export const userIdType = () => DbSchema.id(User.idPrefix).notNull()
 export const users = pgTable(
 	"users",

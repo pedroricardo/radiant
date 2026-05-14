@@ -1,7 +1,7 @@
 import * as lamejs from "@breezystack/lamejs"
+import { EncodingError } from "@radiant/client/lib/IcyEncoderErrors"
 import { Effect, Stream } from "effect"
 import * as AudioSource from "../../lib/AudioSource"
-import { EncodingError } from "@radiant/client/lib/IcyEncoderErrors"
 export { EncodingError }
 function concatUint8Arrays(chunks: ReadonlyArray<Uint8Array>): Uint8Array {
 	let totalLength = 0

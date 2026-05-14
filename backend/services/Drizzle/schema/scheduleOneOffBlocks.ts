@@ -1,12 +1,13 @@
-import { Playout } from "../../../lib"
 import { pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { Playout } from "../../../lib"
 
 import { DbSchema } from ".."
 import { mediaNodeIdType, mediaNodes } from "./mediaNodes"
 import { playlistIdType, playlists } from "./playlists"
 import { radioIdType, radios } from "./radios"
 
-export const scheduleOneOffBlockIdType = () => DbSchema.id(Playout.scheduleOneOffBlockIdPrefix).notNull()
+export const scheduleOneOffBlockIdType = () =>
+	DbSchema.id(Playout.scheduleOneOffBlockIdPrefix).notNull()
 
 export const scheduleOneOffBlocks = pgTable("schedule_one_off_blocks", {
 	id: scheduleOneOffBlockIdType().primaryKey(),

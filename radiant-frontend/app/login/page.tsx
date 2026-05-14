@@ -9,8 +9,8 @@ import { RadiantLogo } from "../components/RadiantLogo"
 import { Badge } from "../components/ui/Badge"
 import { Button } from "../components/ui/Button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/Card"
-import { displayFont, groteskFont, tomorrowFont } from "../lib/fonts"
 import { getCurrentUser } from "../lib/auth"
+import { displayFont, groteskFont, tomorrowFont } from "../lib/fonts"
 import { runServerEffect } from "../lib/serverApiClient"
 
 const providerMeta = {
@@ -31,11 +31,12 @@ function getOAuthProviders() {
 }
 
 export default async function LoginPage() {
-	const [currentUser, providers] = await runServerEffect(Effect.all([ getCurrentUser(), getOAuthProviders() ], {concurrency: "unbounded"}))
+	const [currentUser, providers] = await runServerEffect(
+		Effect.all([getCurrentUser(), getOAuthProviders()], { concurrency: "unbounded" }),
+	)
 	if (Option.isSome(currentUser)) {
 		redirect("/dashboard")
 	}
-
 
 	return (
 		<main className="min-h-screen bg-blue-50 px-4 py-8 sm:px-6 lg:px-8">
@@ -46,13 +47,19 @@ export default async function LoginPage() {
 						<Badge variant="mint">BETA</Badge>
 					</div>
 					<CardHeader className="p-6 sm:p-8">
-						<p className={`text-[10px] font-extrabold uppercase tracking-[0.26em] text-black/55 ${groteskFont.className}`}>
+						<p
+							className={`text-[10px] font-extrabold uppercase tracking-[0.26em] text-black/55 ${groteskFont.className}`}
+						>
 							Authentication
 						</p>
-						<CardTitle className={`${displayFont.className} mt-3 max-w-[7ch] text-[3.25rem] leading-[0.9] text-neo-black sm:text-[4.25rem]`}>
+						<CardTitle
+							className={`${displayFont.className} mt-3 max-w-[7ch] text-[3.25rem] leading-[0.9] text-neo-black sm:text-[4.25rem]`}
+						>
 							JOIN THE STATION
 						</CardTitle>
-						<CardDescription className={`${groteskFont.className} mt-4 max-w-[34rem] text-base leading-7 text-black/75 sm:text-lg`}>
+						<CardDescription
+							className={`${groteskFont.className} mt-4 max-w-[34rem] text-base leading-7 text-black/75 sm:text-lg`}
+						>
 							Sign in with an available provider to access your radios, dashboard, and stream tools.
 						</CardDescription>
 					</CardHeader>
@@ -61,11 +68,14 @@ export default async function LoginPage() {
 						<div className="flex flex-col gap-4">
 							{providers.length === 0 ? (
 								<div className="border-3 border-neo-black bg-neo-paper p-5 shadow-neo-badge">
-									<p className={`${tomorrowFont.className} text-sm font-extrabold uppercase text-neo-black`}>
+									<p
+										className={`${tomorrowFont.className} text-sm font-extrabold uppercase text-neo-black`}
+									>
 										No OAuth providers are currently enabled.
 									</p>
 									<p className={`${groteskFont.className} mt-2 text-sm leading-6 text-black/70`}>
-										Enable GitHub or Discord in the backend configuration and this page will update automatically.
+										Enable GitHub or Discord in the backend configuration and this page will update
+										automatically.
 									</p>
 								</div>
 							) : (

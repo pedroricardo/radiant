@@ -15,20 +15,23 @@ export const GET = async (request: Request) => {
 	}
 
 	const response = await webHandler.handler(
-		new Request(new URL(`/api/auth/oauth/${encodeURIComponent(provider)}/url`, request.url), request)
+		new Request(
+			new URL(`/api/auth/oauth/${encodeURIComponent(provider)}/url`, request.url),
+			request,
+		),
 	)
 
 	if (!response.ok) {
 		return response
 	}
 
-	const authorizationUrl = (await response.json()) as string;
+	const authorizationUrl = (await response.json()) as string
 	const headers = new Headers()
 	headers.set("location", authorizationUrl)
 	headers.set("cache-control", "no-store")
 
 	return new Response(null, {
 		status: 302,
-		headers
+		headers,
 	})
 }

@@ -23,91 +23,85 @@ const dbLayer = TestDbLayer
 const userRepoLayer = UserRepository.UserRepository.Default.pipe(Layer.provideMerge(dbLayer))
 const sessionLayer = SessionService.SessionService.Default.pipe(Layer.provideMerge(dbLayer))
 const storageObjects = new Map<string, Uint8Array>()
-const storageLayer = Layer.succeed(
-	StorageService.StorageService,
-	{
-		putObject: ({ key, content }) =>
-			Stream.runFold(content, new Uint8Array(0), (acc, chunk) => {
-				const merged = new Uint8Array(acc.length + chunk.length)
-				merged.set(acc, 0)
-				merged.set(chunk, acc.length)
-				return merged
-			}).pipe(
-				Effect.tap((bytes) =>
-					Effect.sync(() => {
-						storageObjects.set(key, bytes)
-					}),
-				),
-				Effect.mapError(
-					(cause) =>
-						new StorageService.StorageServiceError({
-							message: "storage spy failed during integration upload",
-							cause,
-						}),
-				),
+const storageLayer = Layer.succeed(StorageService.StorageService, {
+	putObject: ({ key, content }) =>
+		Stream.runFold(content, new Uint8Array(0), (acc, chunk) => {
+			const merged = new Uint8Array(acc.length + chunk.length)
+			merged.set(acc, 0)
+			merged.set(chunk, acc.length)
+			return merged
+		}).pipe(
+			Effect.tap((bytes) =>
+				Effect.sync(() => {
+					storageObjects.set(key, bytes)
+				}),
 			),
-		readObject: (key) =>
-			Effect.sync(() => storageObjects.get(key)).pipe(
-				Effect.flatMap((bytes) =>
-					bytes
-						? Effect.succeed(Stream.make(bytes))
-						: Effect.fail(
+			Effect.mapError(
+				(cause) =>
+					new StorageService.StorageServiceError({
+						message: "storage spy failed during integration upload",
+						cause,
+					}),
+			),
+		),
+	readObject: (key) =>
+		Effect.sync(() => storageObjects.get(key)).pipe(
+			Effect.flatMap((bytes) =>
+				bytes
+					? Effect.succeed(Stream.make(bytes))
+					: Effect.fail(
 							new StorageService.StorageServiceError({
 								message: "storage spy could not find the requested object",
 								cause: key,
 							}),
 						),
-				),
 			),
-		moveObject: (_args) => Effect.void,
-		deleteObject: (key) =>
-			Effect.sync(() => {
-				storageObjects.delete(key)
+		),
+	moveObject: (_args) => Effect.void,
+	deleteObject: (key) =>
+		Effect.sync(() => {
+			storageObjects.delete(key)
+		}),
+})
+const metadataExtractionLayer = Layer.succeed(MetadataExtractionService.MetadataExtractionService, {
+	extractAudioMetadata: (args: {
+		readonly name: string
+		readonly contentType?: string | undefined
+		readonly content: Stream.Stream<Uint8Array, unknown>
+	}) =>
+		Stream.runDrain(args.content).pipe(
+			Effect.mapError(
+				(cause) =>
+					new MetadataExtractionService.MetadataExtractionError({
+						message: "metadata extraction spy failed during integration upload",
+						cause,
+					}),
+			),
+			Effect.as({
+				durationMs: 500,
+				containerFormat: "WAVE",
+				audioCodec: "PCM",
+				bitrate: 705600,
+				title: "Preview Theme",
+				artist: "Integration Artist",
+				album: "Integration Album",
+				albumArtist: "Integration Album Artist",
+				genre: "Integration Test",
+				year: 2026,
+				trackNumber: 2,
+				trackTotal: 12,
+				diskNumber: 1,
+				diskTotal: 1,
+				coverArt: {
+					data: new Uint8Array([7, 8, 9]),
+					mimeType: "image/png",
+				},
+				sampleRate: 44100,
+				channels: 1,
+				mimeType: args.contentType ?? null,
 			}),
-	},
-)
-const metadataExtractionLayer = Layer.succeed(
-	MetadataExtractionService.MetadataExtractionService,
-	{
-		extractAudioMetadata: (args: {
-			readonly name: string
-			readonly contentType?: string | undefined
-			readonly content: Stream.Stream<Uint8Array, unknown>
-		}) =>
-			Stream.runDrain(args.content).pipe(
-				Effect.mapError(
-					(cause) =>
-						new MetadataExtractionService.MetadataExtractionError({
-							message: "metadata extraction spy failed during integration upload",
-							cause,
-						}),
-				),
-				Effect.as({
-					durationMs: 500,
-					containerFormat: "WAVE",
-					audioCodec: "PCM",
-					bitrate: 705600,
-					title: "Preview Theme",
-					artist: "Integration Artist",
-					album: "Integration Album",
-					albumArtist: "Integration Album Artist",
-					genre: "Integration Test",
-					year: 2026,
-					trackNumber: 2,
-					trackTotal: 12,
-					diskNumber: 1,
-					diskTotal: 1,
-					coverArt: {
-						data: new Uint8Array([7, 8, 9]),
-						mimeType: "image/png",
-					},
-					sampleRate: 44100,
-					channels: 1,
-					mimeType: args.contentType ?? null,
-				}),
-			),
-	},
-)
+		),
+})
 const mediaLibraryLayer = MediaLibraryService.DatabaseMediaLibraryService.pipe(
 	Layer.provide(dbLayer),
 	Layer.provide(metadataExtractionLayer),
@@ -226,18 +220,21 @@ it.layer(
 			expect(tree[0]?.name).toBe("Music")
 
 			const uploadResponse = yield* Effect.promise(() =>
-				authenticatedFetch(`http://local/api/radios/${radioId}/media-library/files?name=Preview.wav`, {
-					method: "POST",
-					headers: {
-						"content-type": "audio/wav",
+				authenticatedFetch(
+					`http://local/api/radios/${radioId}/media-library/files?name=Preview.wav`,
+					{
+						method: "POST",
+						headers: {
+							"content-type": "audio/wav",
+						},
+						body: makeSilentWav(500),
 					},
-					body: makeSilentWav(500),
-				}),
+				),
 			)
 			expect(uploadResponse.status).toBe(200)
-			const uploadedNode = yield* Effect.promise<
-				RadiantClient.MediaNode.MediaNode
-			>(() => uploadResponse.json() as Promise<RadiantClient.MediaNode.MediaNode>)
+			const uploadedNode = yield* Effect.promise<RadiantClient.MediaNode.MediaNode>(
+				() => uploadResponse.json() as Promise<RadiantClient.MediaNode.MediaNode>,
+			)
 			expect(uploadedNode.name).toBe("Preview.wav")
 			expect(uploadedNode.kind).toBe("audio_file")
 			expect(uploadedNode.title).toBe("Preview Theme")
@@ -260,7 +257,9 @@ it.layer(
 			)
 			expect(coverArtResponse.status).toBe(200)
 			expect(coverArtResponse.headers.get("content-type")).toBe("image/png")
-			const coverArtBytes = new Uint8Array(yield* Effect.promise(() => coverArtResponse.arrayBuffer()))
+			const coverArtBytes = new Uint8Array(
+				yield* Effect.promise(() => coverArtResponse.arrayBuffer()),
+			)
 			expect(Array.from(coverArtBytes)).toEqual([7, 8, 9])
 
 			const storageInfo = yield* RadiantClient.RadiantClient.use((client) =>
@@ -268,9 +267,7 @@ it.layer(
 			).pipe(Effect.provide(clientLayer))
 			expect(storageInfo.quotaBytes).toBe(BigInt(5_000_000_000))
 			expect(storageInfo.usedBytes).toBeGreaterThan(BigInt(0))
-			expect(storageInfo.remainingBytes).toBe(
-				storageInfo.quotaBytes - storageInfo.usedBytes,
-			)
+			expect(storageInfo.remainingBytes).toBe(storageInfo.quotaBytes - storageInfo.usedBytes)
 		}),
 	)
 })

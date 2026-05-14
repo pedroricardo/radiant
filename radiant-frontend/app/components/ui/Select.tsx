@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
+import * as React from "react"
 
 import { groteskFont, tomorrowFont } from "../../lib/fonts"
 import { cn } from "../../lib/utils"
@@ -16,7 +16,10 @@ const SelectTrigger = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
 	<SelectPrimitive.Trigger
 		ref={ref}
-		className={cn(`flex h-11 w-full items-center justify-between border-3 border-neo-black bg-white px-3 py-2 text-sm text-neo-black shadow-neo-badge outline-none ${groteskFont.className}`, className)}
+		className={cn(
+			`flex h-11 w-full items-center justify-between border-3 border-neo-black bg-white px-3 py-2 text-sm text-neo-black shadow-neo-badge outline-none ${groteskFont.className}`,
+			className,
+		)}
 		{...props}
 	>
 		{children}
@@ -35,7 +38,10 @@ const SelectContent = React.forwardRef<
 		<SelectPrimitive.Content
 			ref={ref}
 			position={position}
-			className={cn(`z-50 max-h-80 min-w-[8rem] overflow-hidden border-3 border-neo-black bg-surface p-2 shadow-neo-panel ${groteskFont.className}`, className)}
+			className={cn(
+				`z-50 max-h-80 min-w-[8rem] overflow-hidden border-3 border-neo-black bg-surface p-2 shadow-neo-panel ${groteskFont.className}`,
+				className,
+			)}
 			{...props}
 		>
 			<SelectPrimitive.Viewport>{children}</SelectPrimitive.Viewport>
@@ -48,7 +54,14 @@ const SelectLabel = React.forwardRef<
 	React.ElementRef<typeof SelectPrimitive.Label>,
 	React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
 >(({ className, ...props }, ref) => (
-	<SelectPrimitive.Label ref={ref} className={cn("px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-black/55", className)} {...props} />
+	<SelectPrimitive.Label
+		ref={ref}
+		className={cn(
+			"px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-black/55",
+			className,
+		)}
+		{...props}
+	/>
 ))
 SelectLabel.displayName = SelectPrimitive.Label.displayName
 
@@ -58,7 +71,10 @@ const SelectItem = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
 	<SelectPrimitive.Item
 		ref={ref}
-		className={cn("relative flex w-full cursor-default select-none items-center border-2 border-transparent px-3 py-2 text-sm font-bold outline-none focus:border-neo-black focus:bg-surface-muted", className)}
+		className={cn(
+			"relative flex w-full cursor-default select-none items-center border-2 border-transparent px-3 py-2 text-sm font-bold outline-none focus:border-neo-black focus:bg-surface-muted",
+			className,
+		)}
 		{...props}
 	>
 		<SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
@@ -70,8 +86,21 @@ const SelectSeparator = React.forwardRef<
 	React.ElementRef<typeof SelectPrimitive.Separator>,
 	React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>
 >(({ className, ...props }, ref) => (
-	<SelectPrimitive.Separator ref={ref} className={cn("-mx-2 my-2 h-px bg-line-strong/20", className)} {...props} />
+	<SelectPrimitive.Separator
+		ref={ref}
+		className={cn("-mx-2 my-2 h-px bg-line-strong/20", className)}
+		{...props}
+	/>
 ))
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName
 
-export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator }
+export {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectLabel,
+	SelectSeparator,
+	SelectTrigger,
+	SelectValue,
+}

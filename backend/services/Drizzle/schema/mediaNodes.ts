@@ -1,5 +1,5 @@
+import { pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core"
 import { MediaNode } from "../../../lib"
-import { bigint, integer, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core"
 
 import { DbSchema } from ".."
 import { radioIdType, radios } from "./radios"
@@ -13,9 +13,11 @@ export const mediaNodes = pgTable(
 		radioId: radioIdType()
 			.notNull()
 			.references(() => radios.id, { onDelete: "cascade" }),
-		parentId: varchar().$type<MediaNode.MediaNodeId>().references((): AnyPgColumn => mediaNodes.id, {
-			onDelete: "cascade",
-		}),
+		parentId: varchar()
+			.$type<MediaNode.MediaNodeId>()
+			.references((): AnyPgColumn => mediaNodes.id, {
+				onDelete: "cascade",
+			}),
 		kind: text({ enum: ["folder", "audio_file"] })
 			.$type<MediaNode.MediaNodeKind>()
 			.notNull(),

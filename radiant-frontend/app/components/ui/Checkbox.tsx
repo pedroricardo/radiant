@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
+import * as React from "react"
 
 import { cn } from "../../lib/utils"
 
@@ -13,7 +13,7 @@ const Checkbox = React.forwardRef<
 		ref={ref}
 		className={cn(
 			"peer h-5 w-5 shrink-0 border-3 border-neo-black bg-white shadow-neo-badge outline-none data-[state=checked]:bg-signal data-[state=checked]:text-neo-black",
-			className
+			className,
 		)}
 		{...props}
 	>

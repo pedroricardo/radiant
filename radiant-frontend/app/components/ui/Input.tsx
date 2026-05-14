@@ -10,13 +10,13 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
 				type={type}
 				className={cn(
 					`flex h-11 w-full border-3 border-neo-black bg-white px-3 py-2 text-sm text-neo-black shadow-neo-badge outline-none placeholder:text-black/45 disabled:cursor-not-allowed disabled:opacity-50 ${groteskFont.className}`,
-					className
+					className,
 				)}
 				ref={ref}
 				{...props}
 			/>
 		)
-	}
+	},
 )
 Input.displayName = "Input"
 

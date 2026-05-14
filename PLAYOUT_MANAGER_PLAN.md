@@ -140,13 +140,14 @@ Tarefas:
 8. implementar `PlayoutSelection`
 9. implementar resolução de `audio file` com `seekMs`
 10. implementar resolução de `playlist` com:
-   - timeline virtual
-   - jingles
-   - crossfade
-   - shuffle determinístico
-   - cálculo de ciclo
-   - `playlistFillMode = once | loop`
-   - snap de resize em fronteiras de música
+
+- timeline virtual
+- jingles
+- crossfade
+- shuffle determinístico
+- cálculo de ciclo
+- `playlistFillMode = once | loop`
+- snap de resize em fronteiras de música
 
 Saída esperada:
 

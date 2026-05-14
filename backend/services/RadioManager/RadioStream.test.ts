@@ -1,7 +1,7 @@
 import { describe, expect } from "bun:test"
 import { Chunk, Effect, Ref, Stream, TestClock } from "effect"
-import * as AudioSource from "../../lib/AudioSource"
 import { it } from "../../bun-test-effect"
+import * as AudioSource from "../../lib/AudioSource"
 import { AudioMultiplexer } from "../AudioMultiplexer"
 import * as RadioStream from "./RadioStream"
 
@@ -72,9 +72,7 @@ describe("RadioStream", () => {
 			const { multiplexer, producedFramesRef } = yield* makeFakeMultiplexerLayer()
 			const runtime = yield* RadioStream.makeRuntime(multiplexer)
 
-			const frames = yield* Stream.runCollect(
-				Stream.take(runtime.subscribe, FRAME_BUFFER_CAPACITY),
-			)
+			const frames = yield* Stream.runCollect(Stream.take(runtime.subscribe, FRAME_BUFFER_CAPACITY))
 			const producedFrames = yield* Ref.get(producedFramesRef)
 
 			expect(runtime.frameBufferCapacity).toBe(FRAME_BUFFER_CAPACITY)

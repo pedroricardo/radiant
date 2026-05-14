@@ -1,7 +1,7 @@
 import Link from "next/link"
 
-import { Badge } from "../ui/Badge"
 import { groteskFont, tomorrowFont } from "../../lib/fonts"
+import { Badge } from "../ui/Badge"
 
 type RadioTileProps = {
 	id: string
@@ -26,14 +26,18 @@ export function RadioTile({ id, name }: RadioTileProps) {
 							Radio
 						</div>
 
-						<div className={`mt-2 text-2xl font-extrabold uppercase leading-none ${tomorrowFont.className}`}>
+						<div
+							className={`mt-2 text-2xl font-extrabold uppercase leading-none ${tomorrowFont.className}`}
+						>
 							{displayName}
 						</div>
 					</div>
 				</div>
 
 				<div className="flex items-center justify-between gap-3 px-3 py-3">
-					<div className={`min-w-0 text-sm font-bold tracking-tight text-neo-black ${groteskFont.className}`}>
+					<div
+						className={`min-w-0 text-sm font-bold tracking-tight text-neo-black ${groteskFont.className}`}
+					>
 						<div className="truncate">{name}</div>
 					</div>
 

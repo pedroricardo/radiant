@@ -1,12 +1,8 @@
-import {
-	AuthService,
-	getOrCreateUserFromOAuthCode,
-	loginOAuth,
-} from "../AuthService"
-import * as OAuth from "../oauth"
-import { OAuthUserInfo } from "../oauth"
-import * as AccountLinkService from "../oauth/AccountLinkService"
-import type { OAuthProvider } from "../oauth/provider"
+import { expect } from "bun:test"
+import { eq } from "drizzle-orm"
+import { Effect, Layer, TestClock } from "effect"
+import { it } from "../../../bun-test-effect"
+import { TestDbLayer, resetDb } from "../../../test/support/testDb"
 import { Drizzle } from "../../Drizzle"
 import { oauthAccounts } from "../../Drizzle/schema/oauthAccountsLinks"
 import { oauthStates } from "../../Drizzle/schema/oauthStates"
@@ -14,11 +10,11 @@ import { sessions } from "../../Drizzle/schema/session"
 import { users } from "../../Drizzle/schema/user"
 import * as SessionService from "../../SessionService"
 import * as UserRepository from "../../UserRepository"
-import { expect } from "bun:test"
-import { eq } from "drizzle-orm"
-import { Effect, Layer, TestClock } from "effect"
-import { it } from "../../../bun-test-effect"
-import { TestDbLayer, resetDb } from "../../../test/support/testDb"
+import { AuthService, getOrCreateUserFromOAuthCode, loginOAuth } from "../AuthService"
+import * as OAuth from "../oauth"
+import { OAuthUserInfo } from "../oauth"
+import * as AccountLinkService from "../oauth/AccountLinkService"
+import type { OAuthProvider } from "../oauth/provider"
 
 const userInfo = new OAuthUserInfo({
 	id: "oauth-user-1",
