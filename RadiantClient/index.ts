@@ -2,7 +2,10 @@ import { FetchHttpClient, HttpApiClient } from "@effect/platform"
 import { Config, Context, Effect, Layer } from "effect"
 import * as ApiContract from "./contract"
 
-const make = Effect.andThen(Config.string("RADIANT_API_URL").pipe(Config.withDefault("http://localhost:3000/")), (baseUrl) =>
+const make = Effect.andThen(Config.string("RADIANT_API_URL").pipe(Config.withDefault(
+	// FIXME: Find a proper way to do this without checking if we are in the browser
+	typeof window !== "undefined" ? "" : "http://localhost:3000/"
+)), (baseUrl) =>
 	HttpApiClient.make(ApiContract.httpApi, { baseUrl }),
 )
 export class RadiantClient extends Context.Tag("RadiantClient")<
