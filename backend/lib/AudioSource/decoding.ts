@@ -2,7 +2,7 @@ import {
 	DEFAULT_CHANNELS,
 	DEFAULT_FRAME_SAMPLES,
 	DEFAULT_SAMPLE_RATE,
-} from "@radiant/backend/services/AudioMultiplexer/constants"
+} from "../../services/AudioMultiplexer/constants"
 import { Chunk, Duration, Effect, Fiber, Option, Stream } from "effect"
 
 import { AudioSource, AudioSourceConfigurationError, concatUint8Arrays } from "."
@@ -30,12 +30,30 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 		)
 	}
 
+	yield* Effect.logDebug("audio_source.decode.configure").pipe(
+		Effect.annotateLogs({
+			sampleRate,
+			channels,
+			seekMs,
+			frameLength,
+			frameByteLength,
+		}),
+	)
+
 	return new AudioSource({
 		sampleRate,
 		channels,
 		stream: Stream.unwrapScoped(
 			Effect.gen(function* () {
 				const seekArgs = seekMs > 0 ? ["-ss", String(seekMs / 1_000)] : []
+				yield* Effect.logInfo("audio_source.decode.spawn_ffmpeg").pipe(
+					Effect.annotateLogs({
+						sampleRate,
+						channels,
+						frameLength,
+						seekMs,
+					}),
+				)
 
 				const process = yield* Effect.try({
 					try: () =>
@@ -68,7 +86,14 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 				})
 
 				yield* Effect.addFinalizer(() =>
-					Effect.sync(() => process.kill()).pipe(Effect.ignoreLogged),
+					Effect.sync(() => process.kill()).pipe(
+						Effect.tap(() =>
+							Effect.logDebug("audio_source.decode.ffmpeg_killed").pipe(
+								Effect.annotateLogs({ seekMs }),
+							),
+						),
+						Effect.ignoreLogged,
+					),
 				)
 
 				if (process.stdin == null || process.stdout == null || process.stderr == null) {
@@ -102,6 +127,9 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 						),
 						Effect.ensuring(Effect.sync(() => writer.end())),
 					),
+				)
+				yield* Effect.logDebug("audio_source.decode.stdin_pump_started").pipe(
+					Effect.annotateLogs({ seekMs }),
 				)
 
 				const stderrFiber = yield* Effect.forkScoped(
@@ -191,6 +219,9 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 						)
 
 						if (exitCode !== 0) {
+							yield* Effect.logWarning("audio_source.decode.ffmpeg_failed").pipe(
+								Effect.annotateLogs({ exitCode, seekMs, stderr }),
+							)
 							return yield* Effect.fail(
 								Option.some(
 									new AudioSourceConfigurationError({
@@ -202,10 +233,16 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 
 						if (pendingBytes.length === 0) {
 							if (!emittedAnyFrame) {
+								yield* Effect.logWarning("audio_source.decode.empty_stream_emits_silence").pipe(
+									Effect.annotateLogs({ seekMs }),
+								)
 								emittedAnyFrame = true
 								return Chunk.of(PCM.emptyFrame(DEFAULT_FRAME_SAMPLES, channels))
 							}
 
+							yield* Effect.logDebug("audio_source.decode.eof").pipe(
+								Effect.annotateLogs({ seekMs }),
+							)
 							return yield* Effect.fail(Option.none())
 						}
 
@@ -224,8 +261,8 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 					}
 				})
 
-				return Stream.repeatEffectChunkOption(pullFrames)
-			}),
-		),
-	})
+					return Stream.repeatEffectChunkOption(pullFrames)
+				}),
+			),
+		})
 })

@@ -6,7 +6,7 @@ const make = Effect.andThen(
 	Config.string("RADIANT_API_URL").pipe(
 		Config.withDefault(
 			// FIXME: Find a proper way to do this without checking if we are in the browser
-			typeof window !== "undefined" ? "" : "http://localhost:3000/",
+			typeof (globalThis as any).window !== "undefined" ? "" : "http://localhost:3000/",
 		),
 	),
 	(baseUrl) => HttpApiClient.make(ApiContract.httpApi, { baseUrl }),

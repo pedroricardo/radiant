@@ -1,7 +1,7 @@
-import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
+import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import { ApiContract } from "@radiant/client"
 import { CurrentUser } from "@radiant/client/contract"
-import { Effect } from "effect"
+import { Effect, Option, Stream } from "effect"
 import { RadioManager } from "../services"
 
 export const radioGroupLive = HttpApiBuilder.group(ApiContract.httpApi, "radio", (handlers) =>
@@ -52,11 +52,37 @@ export const radioGroupLive = HttpApiBuilder.group(ApiContract.httpApi, "radio",
 		)
 		.handle(
 			"listen",
-			Effect.fn("radio.listen")(function* ({ path: { radioId } }) {
+			Effect.fn("radio.listen")(function* ({ path: { radioId }, request }) {
 				const radioManager = yield* RadioManager.RadioManager
-				const icyStream = yield* radioManager.getStream(radioId)
+				const httpRequest = yield* HttpServerRequest.HttpServerRequest
+				const userAgent = httpRequest.headers["user-agent"] ?? null
+				const remoteAddress = Option.getOrNull(httpRequest.remoteAddress)
+				yield* Effect.logInfo("radio.listen.connected").pipe(
+					Effect.annotateLogs({
+						radioId,
+						method: request.method,
+						url: request.url,
+						userAgent,
+						remoteAddress,
+					}),
+				)
+				const icyStream = yield* radioManager
+					.getStream(radioId)
+					.pipe(Effect.catchAll((e) => (e._tag == "RadioNotFound" ? e : Effect.die(e))))
 
-				return HttpServerResponse.stream(icyStream.stream).pipe(
+				const instrumentedStream = icyStream.stream.pipe(
+					Stream.ensuring(
+						Effect.logInfo("radio.listen.disconnected").pipe(
+							Effect.annotateLogs({
+								radioId,
+								userAgent,
+								remoteAddress,
+							}),
+						),
+					),
+				)
+
+				return HttpServerResponse.stream(instrumentedStream).pipe(
 					HttpServerResponse.setHeaders({
 						"Icy-Name": icyStream.metadataTitle,
 						"Icy-Metaint": icyStream.metaInterval.toString(),

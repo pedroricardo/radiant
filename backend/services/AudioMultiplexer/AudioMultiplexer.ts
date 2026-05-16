@@ -1,4 +1,4 @@
-import { Chunk, Duration, Effect, Queue, Ref, Scope, Stream } from "effect"
+import { Chunk, Duration, Effect, Metric, Queue, Ref, Scope, Stream } from "effect"
 import * as AudioSource from "../../lib/AudioSource"
 import * as PCM from "../../lib/PCM"
 import {
@@ -14,6 +14,7 @@ import {
 	MultiplexerInvalidMasterVolumeError,
 } from "./Error"
 import * as internal from "./internal"
+import { radioMultiplexerSetClusterTotal } from "../RadioManager/metrics"
 import {
 	createRuntimeCluster,
 	crossfadeSamples,
@@ -34,6 +35,14 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 		}
 
 		yield* validateConfig(config)
+		yield* Effect.logInfo("audio_multiplexer.initialized").pipe(
+			Effect.annotateLogs({
+				sampleRate: config.sampleRate,
+				channels: config.channels,
+				frameSamples: config.frameSamples,
+				defaultCrossfadeMs: Duration.toMillis(config.defaultCrossfadeDuration),
+			}),
+		)
 
 		const commandQueue = yield* Queue.unbounded<internal.Command>()
 		const pullScope = yield* Scope.Scope
@@ -55,6 +64,16 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 		): Effect.Effect<void, MultiplexerError> =>
 			Effect.gen(function* () {
 				yield* validateSourceInputs(sources, config)
+				yield* Effect.logInfo("audio_multiplexer.set_cluster").pipe(
+					Effect.annotateLogs({
+						sourceCount: sources.length,
+						crossfadeMs:
+							options?.crossfadeDuration == null
+								? Duration.toMillis(config.defaultCrossfadeDuration)
+								: Duration.toMillis(options.crossfadeDuration),
+					}),
+				)
+				yield* Metric.increment(radioMultiplexerSetClusterTotal)
 
 				const offered = yield* Queue.offer(
 					commandQueue,
@@ -70,10 +89,11 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 						}),
 					)
 				}
-			})
+			}).pipe(Effect.withSpan("AudioMultiplexer.setCluster"))
 
 		const clearCluster = (): Effect.Effect<void, MultiplexerError> =>
 			Effect.gen(function* () {
+				yield* Effect.logInfo("audio_multiplexer.clear_cluster")
 				const offered = yield* Queue.offer(commandQueue, internal.Command.ClearCluster())
 				if (!offered) {
 					return yield* Effect.fail(
@@ -82,13 +102,16 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 						}),
 					)
 				}
-			})
+			}).pipe(Effect.withSpan("AudioMultiplexer.clearCluster"))
 
 		const setMasterVolume = (volume: number): Effect.Effect<void, MultiplexerError> =>
 			Effect.gen(function* () {
 				if (!Number.isFinite(volume) || volume < 0) {
 					return yield* Effect.fail(new MultiplexerInvalidMasterVolumeError({ volume }))
 				}
+				yield* Effect.logInfo("audio_multiplexer.set_master_volume").pipe(
+					Effect.annotateLogs({ volume }),
+				)
 				const offered = yield* Queue.offer(
 					commandQueue,
 					internal.Command.SetMasterVolume({ volume }),
@@ -100,7 +123,7 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 						}),
 					)
 				}
-			})
+			}).pipe(Effect.withSpan("AudioMultiplexer.setMasterVolume"))
 
 		/**
 		 * Renders exactly one output frame.
@@ -113,6 +136,15 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 		const nextFrame = Effect.gen(function* () {
 			const commands = Chunk.toReadonlyArray(yield* Queue.takeAll(commandQueue))
 			let state = yield* Ref.get(stateRef)
+			if (commands.length > 0) {
+				yield* Effect.logDebug("audio_multiplexer.commands_drained").pipe(
+					Effect.annotateLogs({
+						commandCount: commands.length,
+						hasActiveCluster: state.activeCluster != null,
+						hasFadingOutCluster: state.fadingOutCluster != null,
+					}),
+				)
+			}
 
 			for (const command of commands) {
 				state = yield* internal.Command.$match(command, {
@@ -144,6 +176,13 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 								fadeProgressSamples: 0,
 								fadeTotalSamples: totalFadeSamples,
 							}
+							yield* Effect.logInfo("audio_multiplexer.cluster_transition_prepared").pipe(
+								Effect.annotateLogs({
+									sourceCount: sources.length,
+									totalFadeSamples,
+									hadPreviousCluster: state.activeCluster != null,
+								}),
+							)
 							if (totalFadeSamples === 0) {
 								return { ...nextState, fadingOutCluster: null }
 							}
@@ -225,5 +264,5 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 			outputUnsafe: output,
 			asAudioSource,
 		}
-	}),
+	}).pipe(Effect.withSpan("AudioMultiplexer.make")),
 }) {}

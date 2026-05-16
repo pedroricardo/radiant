@@ -25,5 +25,10 @@
 		"prettier": "^3.8.1",
 		"prettier-plugin-organize-imports": "^4.3.0",
 		"typescript": "^5"
+	},
+	"dependencies": {
+		"@effect/opentelemetry": "^0.63.0",
+		"@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
+		"@opentelemetry/sdk-trace-base": "^2.7.1"
 	}
 }

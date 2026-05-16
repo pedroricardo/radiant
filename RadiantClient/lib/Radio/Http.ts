@@ -73,18 +73,6 @@ export const radioGroup = HttpApiGroup.make("radio")
 					}),
 				),
 			)
-			.addError(AudioMultiplexerErrors.MultiplexerInvalidConfigError)
-			.addError(AudioMultiplexerErrors.MultiplexerInvalidCrossfadeDurationError)
-			.addError(AudioMultiplexerErrors.MultiplexerInvalidMasterVolumeError)
-			.addError(AudioMultiplexerErrors.MultiplexerInvalidSourceVolumeError)
-			.addError(AudioMultiplexerErrors.MultiplexerSourceChannelMismatchError)
-			.addError(AudioMultiplexerErrors.MultiplexerSourceInvalidSampleRateError)
-			.addError(AudioMultiplexerErrors.MultiplexerSourceFrameShapeError)
-			.addError(AudioMultiplexerErrors.MultiplexerSourcePullError)
-			.addError(AudioMultiplexerErrors.MultiplexerCommandQueueError)
-			.addError(AudioSourceErrors.AudioSourceConfigurationError)
-			.addError(Errors.RadioNotFound)
-			.addError(Errors.RadioManagerDatabaseError)
-			.addError(IcyEncoderErrors.EncodingError),
+			.addError(Errors.RadioNotFound),
 	)
 	.prefix("/radios")

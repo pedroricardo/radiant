@@ -1,10 +1,17 @@
-import { Clock, Data, Duration, Effect, Fiber, Layer, Queue, Ref, Scope, Stream } from "effect"
+import { Clock, Data, Duration, Effect, Fiber, Layer, Metric, Queue, Ref, Scope, Stream } from "effect"
 import type { Radio } from "../../lib"
 import * as AudioSource from "../../lib/AudioSource"
 import * as AudioMultiplexer from "../AudioMultiplexer"
 import * as IcyEncoder from "../IcyEncoder"
 import { PlayoutManager } from "../PlayoutManager"
 import { RadioManagerConfig } from "./RadioManagerConfig"
+import {
+	radioListenerConnectionsActive,
+	radioListenerConnectionsTotal,
+	radioMetric,
+	radioStartsTotal,
+	radioStreamClonesTotal,
+} from "./metrics"
 type RadioStreamError =
 	| Effect.Effect.Error<ReturnType<typeof PlayoutManager.Service.takeover>>
 type RadioStreamSubscriberId = number
@@ -218,12 +225,14 @@ const appendFrameWindow = (
  */
 const makeRuntime = (
 	multiplexer: AudioMultiplexer.AudioMultiplexer,
+	options?: { readonly radioId?: Radio.RadioId; readonly waitUntilReady?: Effect.Effect<void> },
 ): Effect.Effect<RadioStreamRuntime, never, Scope.Scope> =>
 	Effect.gen(function* () {
 		const { channels, frameSamples, sampleRate } = multiplexer.config
 		const frameDurationMs = (frameSamples / sampleRate) * 1_000
 		const frameBufferCapacity = frameBufferCapacityFrom(frameDurationMs)
 		const targetBufferMs = Duration.toMillis(TARGET_CLIENT_BUFFER)
+		const warmupLoggedRef = yield* Ref.make(false)
 
 		const stateRef = yield* Ref.make<RadioStreamState>({
 			nextSubscriberId: 0,
@@ -247,8 +256,23 @@ const makeRuntime = (
 			})
 
 		const producer = Effect.gen(function* () {
+			if (options?.waitUntilReady != null) {
+				yield* Effect.logDebug("radio_stream.waiting_for_playout_ready").pipe(
+					Effect.annotateLogs({ radioId: options.radioId ?? null }),
+				)
+				yield* options.waitUntilReady
+			}
 			const startedAt = yield* Clock.currentTimeMillis
 			const framesProducedRef = yield* Ref.make(0)
+			yield* Effect.logInfo("radio_stream.producer_started").pipe(
+				Effect.annotateLogs({
+					sampleRate,
+					channels,
+					frameSamples,
+					frameBufferCapacity,
+					targetBufferMs,
+				}),
+			)
 
 			yield* multiplexer.outputUnsafe.pipe(
 				Stream.runForEachScoped((frame) =>
@@ -259,6 +283,21 @@ const makeRuntime = (
 						const producedAudioMs = framesProduced * frameDurationMs
 						const elapsedMs = (yield* Clock.currentTimeMillis) - startedAt
 						const aheadMs = producedAudioMs - elapsedMs
+						if (aheadMs >= targetBufferMs) {
+							const shouldLogWarmup = yield* Ref.getAndSet(warmupLoggedRef, true).pipe(
+								Effect.map((alreadyLogged) => !alreadyLogged),
+							)
+							if (shouldLogWarmup) {
+								yield* Effect.logInfo("radio_stream.warmup_completed").pipe(
+									Effect.annotateLogs({
+										framesProduced,
+										producedAudioMs,
+										elapsedMs,
+										aheadMs,
+									}),
+								)
+							}
+						}
 
 						if (aheadMs > targetBufferMs) {
 							yield* Effect.sleep(Duration.millis(aheadMs - targetBufferMs))
@@ -299,17 +338,44 @@ const makeRuntime = (
 							...state,
 							subscribers,
 						}
-					}).pipe(Effect.zipRight(Queue.shutdown(queue)), Effect.orDie),
+					}).pipe(
+						Effect.zipRight(
+							Effect.logInfo("radio_stream.subscriber_disconnected").pipe(
+								Effect.annotateLogs({ subscriberId }),
+							),
+						),
+						Effect.zipRight(
+							options?.radioId == null
+								? Effect.void
+								: Metric.incrementBy(
+										radioMetric(radioListenerConnectionsActive, options.radioId),
+										-1,
+									),
+						),
+						Effect.zipRight(Queue.shutdown(queue)),
+						Effect.orDie,
+					),
 				)
 
 				yield* Effect.forEach(frameWindow, (frame) => Queue.offer(queue, frame), {
 					discard: true,
 				})
+				yield* Effect.logInfo("radio_stream.subscriber_connected").pipe(
+					Effect.annotateLogs({
+						subscriberId,
+						replayedFrames: frameWindow.length,
+						frameBufferCapacity,
+					}),
+				)
+				if (options?.radioId != null) {
+					yield* Metric.increment(radioMetric(radioListenerConnectionsTotal, options.radioId))
+					yield* Metric.increment(radioMetric(radioListenerConnectionsActive, options.radioId))
+				}
 
 				return Stream.fromQueue(queue, {
 					shutdown: false,
 				})
-			}),
+			}).pipe(Effect.withSpan("RadioStream.subscribe")),
 		)
 
 		return {
@@ -318,12 +384,21 @@ const makeRuntime = (
 			frameBufferCapacity,
 			subscribe,
 		}
-	})
+	}).pipe(
+		Effect.annotateLogs({
+			sampleRate: multiplexer.config.sampleRate,
+			channels: multiplexer.config.channels,
+			frameSamples: multiplexer.config.frameSamples,
+		}),
+		Effect.withSpan("RadioStream.makeRuntime"),
+	)
 
 const startRadio = Effect.fn("RadioStream.startRadio")(function* (radioId: Radio.RadioId) {
 	const config = yield* RadioManagerConfig
 	const scope = yield* Scope.make()
 	const playoutManager = yield* PlayoutManager
+	const playoutReady = yield* Effect.makeLatch(false)
+	yield* Effect.logInfo("radio_stream.starting").pipe(Effect.annotateLogs({ radioId }))
 	// Criamos o Multiplexer dentro de um scope partilhado para o rádio
 	const multiplexer = yield* AudioMultiplexer.AudioMultiplexer.pipe(
 		Effect.provide(
@@ -333,14 +408,31 @@ const startRadio = Effect.fn("RadioStream.startRadio")(function* (radioId: Radio
 			),
 		),
 	)
-	yield* playoutManager.syncNow(radioId, multiplexer)
-	const runtime = yield* makeRuntime(multiplexer).pipe(Effect.provideService(Scope.Scope, scope))
+	const runtime = yield* makeRuntime(multiplexer, {
+		radioId,
+		waitUntilReady: playoutReady.await,
+	}).pipe(
+		Effect.provideService(Scope.Scope, scope),
+	)
 	// Fibra que mantém o Playout Manager a correr (alimentando o multiplexer)
-	const playoutManagerFiber = yield* playoutManager.takeover(radioId, multiplexer).pipe(
+	const playoutManagerFiber = yield* playoutManager
+		.takeover(radioId, multiplexer, {
+			readyLatch: playoutReady,
+		})
+		.pipe(
 		Effect.tapErrorCause(Effect.logFatal),
 		Effect.onExit((e) => Scope.close(scope, e)),
 		Effect.forkDaemon,
+		)
+	yield* Effect.logInfo("radio_stream.started").pipe(
+		Effect.annotateLogs({
+			radioId,
+			sampleRate: runtime.sampleRate,
+			channels: runtime.channels,
+			frameBufferCapacity: runtime.frameBufferCapacity,
+		}),
 	)
+	yield* Metric.increment(radioMetric(radioStartsTotal, radioId))
 
 	return new RadioStream({
 		radioId,
@@ -356,6 +448,14 @@ const startRadio = Effect.fn("RadioStream.startRadio")(function* (radioId: Radio
  */
 const cloneStream = (self: RadioStream, options: { kbps: number; title?: string }) =>
 	Effect.gen(function* () {
+		yield* Effect.logInfo("radio_stream.clone_stream").pipe(
+			Effect.annotateLogs({
+				radioId: self.radioId,
+				kbps: options.kbps,
+				hasTitle: options.title != null,
+			}),
+		)
+		yield* Metric.increment(radioMetric(radioStreamClonesTotal, self.radioId))
 		const encoder = yield* IcyEncoder.IcyEncoder
 		const source = new AudioSource.AudioSource({
 			sampleRate: self.runtime.sampleRate,
@@ -367,9 +467,18 @@ const cloneStream = (self: RadioStream, options: { kbps: number; title?: string 
 			kbps: options.kbps,
 			metadataTitle: options.title,
 		})
-	}).pipe(Effect.withSpan("RadioStream.cloneStream"))
+	}).pipe(
+		Effect.annotateLogs({ radioId: self.radioId }),
+		Effect.withSpan("RadioStream.cloneStream"),
+	)
 const stop = (self: RadioStream) =>
-	Fiber.interrupt(self.playoutManagerFiber).pipe(Effect.withSpan("RadioStream.stop"))
+	Fiber.interrupt(self.playoutManagerFiber).pipe(
+		Effect.tap(() =>
+			Effect.logInfo("radio_stream.stopped").pipe(Effect.annotateLogs({ radioId: self.radioId })),
+		),
+		Effect.annotateLogs({ radioId: self.radioId }),
+		Effect.withSpan("RadioStream.stop"),
+	)
 
 export {
 	cloneStream,

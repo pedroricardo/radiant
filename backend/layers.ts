@@ -1,5 +1,7 @@
+import { FetchHttpClient } from "@effect/platform"
 import { BunContext } from "@effect/platform-bun"
-import { Layer } from "effect"
+import * as Otlp from "@effect/opentelemetry/Otlp"
+import { Layer, Logger } from "effect"
 import { IcyEncoder, PlayoutManager, RadioManager } from "./services"
 import { AuthService } from "./services/AuthService/AuthService"
 import * as OAuth from "./services/AuthService/oauth"
@@ -55,6 +57,38 @@ const radioManagerLayer = RadioManager.layer.pipe(
 	Layer.provideMerge(dbLayer),
 	Layer.provideMerge(mediaLibraryServiceLayer),
 )
+
+const otelBaseUrl = process.env.RADIANT_OTEL_BASE_URL
+const otelHeaders = process.env.RADIANT_OTEL_HEADERS
+	? (JSON.parse(process.env.RADIANT_OTEL_HEADERS) as Record<string, string>)
+	: undefined
+const otelExportIntervalMs = process.env.RADIANT_OTEL_EXPORT_INTERVAL_MS
+	? Number(process.env.RADIANT_OTEL_EXPORT_INTERVAL_MS)
+	: undefined
+
+const observabilityLive =
+	otelBaseUrl == null || otelBaseUrl.length === 0
+		? Layer.empty
+		: Otlp.layerJson({
+				baseUrl: otelBaseUrl,
+				headers: otelHeaders,
+				resource: {
+					serviceName: process.env.RADIANT_OTEL_SERVICE_NAME ?? "radiant-backend",
+					serviceVersion: process.env.RADIANT_OTEL_SERVICE_VERSION,
+					attributes: {
+						"deployment.environment": process.env.NODE_ENV ?? "development",
+					},
+				},
+				tracerExportInterval:
+					otelExportIntervalMs == null ? "1 seconds" : `${otelExportIntervalMs} millis`,
+				metricsExportInterval:
+					otelExportIntervalMs == null ? "5 seconds" : `${otelExportIntervalMs} millis`,
+				loggerExportInterval:
+					otelExportIntervalMs == null ? "1 seconds" : `${otelExportIntervalMs} millis`,
+				loggerExcludeLogSpans: false,
+				shutdownTimeout: "3 seconds",
+			}).pipe(Layer.provideMerge(FetchHttpClient.layer))
+
 export const ProductionLayer = Layer.mergeAll(
 	dbLayer,
 	userRepoLayer,
@@ -70,5 +104,7 @@ export const ProductionLayer = Layer.mergeAll(
 	metadataExtractionServiceLayer,
 	mediaLibraryServiceLayer,
 ).pipe(
-	Layer.provideMerge(BunContext.layer)
+	Layer.provideMerge(BunContext.layer),
+	Layer.provideMerge(observabilityLive),
+	Layer.provideMerge(Logger.pretty)
 )

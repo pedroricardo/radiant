@@ -248,10 +248,13 @@ describe("RadioStream", () => {
 							PlayoutManager,
 							PlayoutManager.make({
 								syncNow: (_radioId, multiplexer) =>
+									syncMultiplexerToRealAudio(multiplexer),
+								takeover: (_radioId, multiplexer, options) =>
 									Ref.update(syncCallsRef, (count) => count + 1).pipe(
 										Effect.zipRight(syncMultiplexerToRealAudio(multiplexer)),
+										Effect.zipRight(options?.readyLatch?.open ?? Effect.void),
+										Effect.zipRight(Effect.never),
 									),
-								takeover: () => Effect.never,
 							}),
 						),
 					),
