@@ -19,7 +19,7 @@ export const MediaNode = Schema.Struct({
 	storageKey: Schema.NullOr(Schema.String),
 	mimeType: Schema.NullOr(Schema.String),
 	sizeBytes: Schema.NullOr(
-		Schema.Union(Schema.NonNegativeBigInt, Schema.NonNegativeBigIntFromSelf),
+		Schema.NonNegativeBigInt,
 	),
 	durationMs: Schema.NullOr(Schema.Int),
 	containerFormat: Schema.NullOr(Schema.String),

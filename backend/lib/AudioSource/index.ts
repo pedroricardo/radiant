@@ -1,6 +1,6 @@
 import { FileSystem } from "@effect/platform"
 import { AudioSourceConfigurationError } from "@radiant/client/lib/AudioSourceErrors"
-import { Chunk, Data, Effect, Fiber, Function, Option, Stream } from "effect"
+import { Chunk, Data, Duration, Effect, Fiber, Function, Option, Stream } from "effect"
 
 import {
 	DEFAULT_CHANNELS,
@@ -50,6 +50,7 @@ export class AudioSource<
 	readonly stream: Stream.Stream<Float32Array, E, R>
 }> {}
 
+
 export const fromPCM = <const SampleRate extends number>(
 	pcm: Float32Array[],
 	sampleRate: SampleRate,
@@ -80,13 +81,64 @@ export const fromLiveStream = <const SampleRate extends number, E, R>(
 		})
 	})
 
-export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string) {
+
+export const mapStream: {
+  <
+    const SampleRate extends number,
+    E,
+    R,
+    E2,
+    R2
+  >(
+    fn: (
+      stream: Stream.Stream<Float32Array<ArrayBufferLike>, E, R>
+    ) => Stream.Stream<Float32Array<ArrayBufferLike>, E | E2, R | R2>
+  ): (
+    self: AudioSource<SampleRate, E, R>
+  ) => AudioSource<SampleRate, E | E2, R | R2>
+
+  <
+    const SampleRate extends number,
+    E,
+    R,
+    E2,
+    R2
+  >(
+    self: AudioSource<SampleRate, E, R>,
+    fn: (
+      stream: Stream.Stream<Float32Array<ArrayBufferLike>, E, R>
+    ) => Stream.Stream<Float32Array<ArrayBufferLike>, E | E2, R | R2>
+  ): AudioSource<SampleRate, E | E2, R | R2>
+} = Function.dual(
+  2,
+  <
+    const SampleRate extends number,
+    E,
+    R,
+    E2,
+    R2
+  >(
+    self: AudioSource<SampleRate, E, R>,
+    fn: (
+      stream: Stream.Stream<Float32Array<ArrayBufferLike>, E, R>
+    ) => Stream.Stream<Float32Array<ArrayBufferLike>, E | E2, R | R2>
+  ) => new AudioSource({
+        ...self,
+        stream: fn(self.stream)
+      })
+	)
+
+export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string,
+	options?: {
+		readonly seek?: Duration.DurationInput
+	},) {
 	const fs = yield* FileSystem.FileSystem
 
 	const sampleRate = DEFAULT_SAMPLE_RATE
 	const channels = DEFAULT_CHANNELS
 	const frameLength = PCM.frameLength(DEFAULT_FRAME_SAMPLES, channels)
 	const frameByteLength = PCM.frameByteLength(DEFAULT_FRAME_SAMPLES, channels)
+	const seekMs = options?.seek === undefined ? 0 : Duration.toMillis(options.seek)
 
 	yield* PCM.validateConfig(sampleRate, channels)
 
@@ -112,6 +164,7 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string)
 		channels,
 		stream: Stream.unwrapScoped(
 			Effect.gen(function* () {
+				const seekArgs = seekMs > 0 ? ["-ss", String(seekMs / 1_000)] : []
 				const process = yield* Effect.try({
 					try: () =>
 						Bun.spawn({
@@ -121,6 +174,7 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string)
 								"error",
 								"-i",
 								path,
+								...seekArgs,
 								"-f",
 								"f32le",
 								"-acodec",
@@ -365,5 +419,14 @@ export const resampleTo = Function.dual<
 		stream,
 	})
 })
-
+export const empty = new AudioSource({
+	channels: 2,
+	sampleRate: DEFAULT_SAMPLE_RATE,
+	stream: Stream.empty
+})
+export const silence = new AudioSource({
+	channels: 2,
+	sampleRate: DEFAULT_SAMPLE_RATE,
+	stream: Stream.repeatValue(new Float32Array(new Array(DEFAULT_FRAME_SAMPLES).fill(0)))
+})
 export * from "./decoding"

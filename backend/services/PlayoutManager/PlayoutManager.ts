@@ -2,7 +2,7 @@ import { AudioSource } from "@radiant/backend/lib"
 import { MediaLibrary, MediaNode, Playout, type Playlist, type Radio } from "@radiant/client"
 import type { ScheduleOneOffBlock, ScheduleWeeklyBlock } from "@radiant/client/lib/Playout"
 import { eq } from "drizzle-orm"
-import { Array, Data, DateTime, Duration, Effect, Match, Option, pipe, Schema } from "effect"
+import { Array, Console, Data, DateTime, Duration, Effect, Equal, Match, Option, pipe, Schema, Stream } from "effect"
 import type { ParseError } from "effect/ParseResult"
 import type { Simplify } from "effect/Types"
 import assert from "node:assert/strict"
@@ -127,8 +127,14 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 				DateTime.lessThan(block.startsAt, block.endsAt),
 				"DateTime.lessThan(block.startsAt, block.endsAt)",
 			)
+
 			const isInsideBlock =
 				DateTime.greaterThanOrEqualTo(time, block.startsAt) && DateTime.lessThan(time, block.endsAt)
+			yield* Effect.log("isInsideBlock = " + isInsideBlock)
+			yield* Effect.log("DateTime.greaterThanOrEqualTo(time, block.startsAt)  = " + DateTime.greaterThanOrEqualTo(time, block.startsAt) )
+			yield* Effect.log("DateTime.lessThan(time, block.endsAt) = " + DateTime.lessThan(time, block.endsAt) )
+			yield* Effect.log("block = ", block)
+			yield* Effect.log("time = ", time)
 			if (!isInsideBlock) {
 				return Option.none()
 			}
@@ -160,6 +166,11 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 								),
 							)
 						assert.equal(block.playlistFillMode, null)
+						assert.notEqual(mediaNode.durationMs, null)
+						const actualEndsAt = DateTime.addDuration(block.startsAt, mediaNode.durationMs!);
+						if(DateTime.greaterThanOrEqualTo(time, actualEndsAt)) {
+							return Option.none();
+						}
 						return Option.some(
 							TimelineHit.AudioFile({
 								block: block as any,
@@ -207,7 +218,7 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 			)
 		})
 
-		const takeover = Effect.fn("PlayoutManager.takeover")(function* (
+		const syncNow = Effect.fn("PlayoutManager.syncNow")(function* (
 			radioId: Radio.RadioId,
 			multiplexer: AudioMultiplexer.AudioMultiplexer,
 		) {
@@ -216,12 +227,14 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 
 			const now = pipe(
 				yield* DateTime.now,
-				DateTime.setZone(DateTime.zoneUnsafeMakeNamed(radio.timezone)),
+				DateTime.unsafeSetZoneNamed(radio.timezone, {
+					adjustForTimeZone: true
+				}),
 			)
 
 			const timelineHit = yield* findBlockCollidingWithTime(blocks, now)
 
-			return yield* pipe(
+			yield* pipe(
 				Match.value(timelineHit),
 				Match.tagsExhaustive({
 					Silence: (_) => Effect.gen(function* () {
@@ -229,30 +242,22 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 					}),
 
 					AudioFile: (hit) => Effect.gen(function* () {
-						/**
-						 * Ajusta isto ao nome real da coluna/campo do teu MediaNode.
-						 *
-						 * O ideal é o MediaNode ter um campo estável tipo:
-						 * - storageKey
-						 * - objectKey
-						 * - contentKey
-						 *
-						 * Não uses path local aqui, porque isto tem de funcionar igual
-						 * em várias instâncias horizontais.
-						 */
 						const storageKey = hit.mediaNode.storageKey
 						assert.ok(storageKey); // Se é um ficheiro de audio, ele necessariamente vai ter um storageKey, se não tiver, o banco de dados tá corrompido
-						const encodedAudioStream = yield* storage.readObject(storageKey)
+						const encodedAudioStream = (yield* storage.readObject(storageKey)).pipe(
+						)
 
 						const source = yield* AudioSource.fromEncodedAudioFileStream(encodedAudioStream, {
 							seek: hit.playbackPosition,
-						})
-
+						}).pipe(
+							Effect.map(AudioSource.mapStream(Stream.timeout("3 seconds")))
+						)
+						console.log(hit)
 						yield* multiplexer.setCluster([
 							{
 								id: hit.mediaNode.id,
 								volume: 1.0,
-								source,
+								source: source,
 							},
 						])
 					}),
@@ -263,7 +268,15 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 				}),
 			)
 		})
+
+		const takeover = Effect.fn("PlayoutManager.takeover")(function* (
+			radioId: Radio.RadioId,
+			multiplexer: AudioMultiplexer.AudioMultiplexer,
+		) {
+			return yield* Effect.never
+		})
 		return {
+			syncNow,
 			takeover,
 		}
 	}),

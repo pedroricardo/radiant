@@ -273,7 +273,6 @@ const makeRuntime = (
 		const subscribe: Stream.Stream<Float32Array> = Stream.unwrapScoped(
 			Effect.gen(function* () {
 				const queue = yield* Queue.sliding<Float32Array>(frameBufferCapacity)
-
 				const { frameWindow, subscriberId } = yield* Ref.modify(stateRef, (state) => {
 					const subscriberId = state.nextSubscriberId
 					const subscribers = new Map(state.subscribers)
@@ -334,9 +333,11 @@ const startRadio = Effect.fn("RadioStream.startRadio")(function* (radioId: Radio
 			),
 		),
 	)
+	yield* playoutManager.syncNow(radioId, multiplexer)
 	const runtime = yield* makeRuntime(multiplexer).pipe(Effect.provideService(Scope.Scope, scope))
 	// Fibra que mantém o Playout Manager a correr (alimentando o multiplexer)
 	const playoutManagerFiber = yield* playoutManager.takeover(radioId, multiplexer).pipe(
+		Effect.tapErrorCause(Effect.logFatal),
 		Effect.onExit((e) => Scope.close(scope, e)),
 		Effect.forkDaemon,
 	)

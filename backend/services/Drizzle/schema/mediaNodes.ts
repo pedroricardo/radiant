@@ -4,12 +4,12 @@ import { MediaNode } from "../../../lib"
 import { DbSchema } from ".."
 import { radioIdType, radios } from "./radios"
 
-export const mediaNodeIdType = () => DbSchema.id(MediaNode.idPrefix).notNull()
+export const mediaNodeIdType = () => DbSchema.id(MediaNode.idPrefix)
 
 export const mediaNodes = pgTable(
 	"media_nodes",
 	{
-		id: mediaNodeIdType().primaryKey(),
+		id: mediaNodeIdType().primaryKey().notNull(),
 		radioId: radioIdType()
 			.notNull()
 			.references(() => radios.id, { onDelete: "cascade" }),

@@ -34,8 +34,8 @@ export const ScheduleWeeklyBlock = Schema.Struct({
 	playlistFillMode: Schema.NullOr(PlaylistFillMode),
 	playbackMode: BlockPlaybackMode,
 	modeAfterPlayback: ModeAfterPlayback.pipe(Schema.optionalWith({ default: () => "overlay" })),
-	createdAt: Schema.DateTimeZoned,
-	updatedAt: Schema.DateTimeZoned,
+	createdAt: Schema.DateTimeUtc,
+	updatedAt: Schema.DateTimeUtc,
 })
 
 export type ScheduleWeeklyBlock = typeof ScheduleWeeklyBlock.Type
@@ -48,16 +48,16 @@ export type ScheduleOneOffBlockId = typeof ScheduleOneOffBlockId.Type
 export const ScheduleOneOffBlock = Schema.Struct({
 	id: ScheduleOneOffBlockId,
 	radioId: Radio.RadioId,
-	startsAt: Schema.DateTimeZoned,
-	endsAt: Schema.DateTimeZoned,
+	startsAt: Schema.DateTimeUtc,
+	endsAt: Schema.DateTimeUtc,
 	targetType: ScheduleTargetType,
 	playlistId: Schema.NullOr(Playlist.PlaylistId),
 	mediaNodeId: Schema.NullOr(MediaNode.MediaNodeId),
 	playlistFillMode: Schema.NullOr(PlaylistFillMode),
 	playbackMode: BlockPlaybackMode,
 	modeAfterPlayback: ModeAfterPlayback.pipe(Schema.optionalWith({ default: () => "overlay" })),
-	createdAt: Schema.DateTimeZoned,
-	updatedAt: Schema.DateTimeZoned,
+	createdAt: Schema.DateTimeUtc,
+	updatedAt: Schema.DateTimeUtc,
 })
 
 export type ScheduleOneOffBlock = typeof ScheduleOneOffBlock.Type
@@ -70,12 +70,12 @@ export const PlayoutInterruption = Schema.Struct({
 	id: PlayoutInterruptionId,
 	radioId: Radio.RadioId,
 	mediaNodeId: MediaNode.MediaNodeId,
-	startsAt: Schema.DateTimeZoned,
+	startsAt: Schema.DateTimeUtc,
 	endsAt: Schema.NullOr(Schema.DateTimeUtc),
 	modeAfterPlayback: ModeAfterPlayback,
 	createdByUserId: Schema.NullOr(User.UserId),
 	note: Schema.NullOr(Schema.String),
-	createdAt: Schema.DateTimeZoned,
+	createdAt: Schema.DateTimeUtc,
 })
 
 export type PlayoutInterruption = typeof PlayoutInterruption.Type

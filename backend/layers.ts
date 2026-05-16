@@ -1,4 +1,4 @@
-import { HttpServer } from "@effect/platform"
+import { BunContext } from "@effect/platform-bun"
 import { Layer } from "effect"
 import { IcyEncoder, PlayoutManager, RadioManager } from "./services"
 import { AuthService } from "./services/AuthService/AuthService"
@@ -40,9 +40,7 @@ const authServiceLayer = AuthService.Default.pipe(
 
 const oauthStateLayer = oauthStateCheckerLayer.pipe(Layer.provideMerge(dbLayer))
 
-const storageServiceLayer = StorageService.LocalDiskStorageService.pipe(
-	Layer.provideMerge(HttpServer.layerContext),
-)
+const storageServiceLayer = StorageService.LocalDiskStorageService;
 const metadataExtractionServiceLayer = MetadataExtractionService.MusicMetadataExtractionService
 const mediaLibraryServiceLayer = MediaLibraryService.DatabaseMediaLibraryService.pipe(
 	Layer.provideMerge(dbLayer),
@@ -71,4 +69,6 @@ export const ProductionLayer = Layer.mergeAll(
 	storageServiceLayer,
 	metadataExtractionServiceLayer,
 	mediaLibraryServiceLayer,
+).pipe(
+	Layer.provideMerge(BunContext.layer)
 )

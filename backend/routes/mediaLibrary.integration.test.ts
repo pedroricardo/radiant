@@ -123,6 +123,7 @@ const radioManagerLayer = RadioManager.RadioManager.Default.pipe(
 	Layer.provide(PlayoutManager.Default),
 	Layer.provide(RadioManager.RadioRepository.Default),
 	Layer.provide(mediaLibraryLayer),
+	Layer.provide(storageLayer),
 	Layer.provide(dbLayer),
 )
 

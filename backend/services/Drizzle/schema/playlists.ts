@@ -12,12 +12,12 @@ import { Playlist } from "../../../lib"
 import { DbSchema } from ".."
 import { radioIdType, radios } from "./radios"
 
-export const playlistIdType = () => DbSchema.id(Playlist.idPrefix).notNull()
+export const playlistIdType = () => DbSchema.id(Playlist.idPrefix)
 
 export const playlists = pgTable(
 	"playlists",
 	{
-		id: playlistIdType().primaryKey(),
+		id: playlistIdType().primaryKey().notNull(),
 		radioId: radioIdType()
 			.notNull()
 			.references(() => radios.id, { onDelete: "cascade" }),

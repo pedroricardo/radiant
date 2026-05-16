@@ -84,7 +84,7 @@ const toMediaNode = (
 		name: node.name,
 		storageKey: audioMetadata?.storageKey ?? null,
 		mimeType: audioMetadata?.mimeType ?? null,
-		sizeBytes: audioMetadata?.sizeBytes ?? null,
+		sizeBytes: audioMetadata?.sizeBytes?.toString() ?? null,
 		durationMs: audioMetadata?.durationMs ?? null,
 		containerFormat: audioMetadata?.containerFormat ?? null,
 		audioCodec: audioMetadata?.audioCodec ?? null,
@@ -506,7 +506,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 						}
 
 						if (extracted.coverArt != null) {
-							coverArtStorageKey = `${storageKey}/cover`
+							coverArtStorageKey = `${storageKey}-cover`
 							yield* storage
 								.putObject({
 									radioId,

@@ -10,7 +10,7 @@ export const User = Schema.Struct({
 	email: Schema.String,
 	avatarUrl: Schema.String,
 	storageQuotaBytes: Schema.NullOr(
-		Schema.Union(Schema.NonNegativeBigInt, Schema.NonNegativeBigIntFromSelf),
+		Schema.NonNegativeBigInt
 	),
 	createdAt: Schema.DateTimeUtc,
 })
