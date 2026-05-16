@@ -1,5 +1,6 @@
 import { Chunk, Duration, Effect, Option, Scope, Stream } from "effect"
 import * as AudioSource from "../../lib/AudioSource"
+import * as PCM from "../../lib/PCM"
 import type { MultiplexerError } from "./Error"
 import {
 	MultiplexerInvalidConfigError,
@@ -9,7 +10,6 @@ import {
 	MultiplexerSourceInvalidSampleRateError,
 	MultiplexerSourcePullError,
 } from "./Error"
-import { applyGain, averageFrames, concatFloat32 } from "./internal/audio"
 import type {
 	AudioMultiplexerConfig,
 	MultiplexerSourceInput,
@@ -179,7 +179,7 @@ export const renderSourceFrame = (
 							}),
 						)
 					}
-					buffer = concatFloat32(buffer, chunkFrame)
+					buffer = PCM.concatFrames(buffer, chunkFrame)
 				}
 			}
 		}
@@ -193,7 +193,7 @@ export const renderSourceFrame = (
 		nextBuffer.set(buffer.subarray(consumed), 0)
 
 		return {
-			frame: applyGain(frame, source.volume),
+			frame: PCM.applyVolume(frame, source.volume),
 			nextSource: {
 				...source,
 				buffer: nextBuffer,
@@ -233,7 +233,7 @@ export const renderClusterFrame = (
 		}
 
 		return {
-			frame: averageFrames(renderedFrames, frameLength),
+			frame: PCM.averageFrames(renderedFrames, frameLength),
 			cluster: {
 				id: cluster.id,
 				sources: nextSources,

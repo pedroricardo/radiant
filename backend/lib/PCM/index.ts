@@ -24,6 +24,13 @@ export type PCMConfig = {
 	readonly channels: number
 }
 
+/**
+ * Validates a raw PCM stream configuration.
+ *
+ * `sampleRate` must be a positive finite number and `channels` must be a
+ * positive integer. This is the shared low-level guard used by `AudioSource`
+ * constructors and by other PCM helpers that assume interleaved linear PCM.
+ */
 export const validateConfig = (sampleRate: number, channels: number) =>
 	Effect.gen(function* () {
 		if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
@@ -43,6 +50,14 @@ export const validateConfig = (sampleRate: number, channels: number) =>
 		}
 	})
 
+/**
+ * Returns the number of samples per channel in an interleaved PCM frame.
+ *
+ * Example for stereo:
+ * - frame length `2048`
+ * - channels `2`
+ * - result `1024`
+ */
 export const frameSamplesPerChannel = (frame: PCMFrame, channels: number): number => {
 	if (!Number.isInteger(channels) || channels <= 0) {
 		return 0
@@ -51,6 +66,14 @@ export const frameSamplesPerChannel = (frame: PCMFrame, channels: number): numbe
 	return Math.floor(frame.length / channels)
 }
 
+/**
+ * Computes the total interleaved frame length for a given logical frame size.
+ *
+ * Example:
+ * - `frameSamples = 1024`
+ * - `channels = 2`
+ * - result `2048`
+ */
 export const frameLength = (frameSamples: number, channels: number): number => {
 	if (!Number.isInteger(frameSamples) || frameSamples <= 0) {
 		return 0
@@ -63,18 +86,57 @@ export const frameLength = (frameSamples: number, channels: number): number => {
 	return frameSamples * channels
 }
 
+/**
+ * Returns the number of bytes required to store one interleaved `Float32`
+ * frame with the provided dimensions.
+ */
 export const frameByteLength = (frameSamples: number, channels: number): number =>
 	frameLength(frameSamples, channels) * Float32Array.BYTES_PER_ELEMENT
 
+/**
+ * Allocates a silent PCM frame of the requested logical size.
+ *
+ * The resulting frame is interleaved and zero-filled.
+ */
 export const emptyFrame = (frameSamples: number, channels: number): PCMFrame =>
 	new Float32Array(frameLength(frameSamples, channels))
 
+/**
+ * Returns a deep copy of a PCM frame.
+ *
+ * Useful when a caller needs to preserve frame identity boundaries and avoid
+ * mutating shared sample buffers.
+ */
 export const copyFrame = (frame: PCMFrame): PCMFrame => {
 	const out = new Float32Array(frame.length)
 	out.set(frame, 0)
 	return out
 }
 
+/**
+ * Concatenates two interleaved PCM frames into one contiguous frame.
+ *
+ * This is mainly used by streaming decoders / renderers that accumulate partial
+ * pulls until a complete output frame is available.
+ */
+export const concatFrames = (left: PCMFrame, right: PCMFrame): PCMFrame => {
+	if (left.length === 0) {
+		return right
+	}
+
+	if (right.length === 0) {
+		return left
+	}
+
+	const out = new Float32Array(left.length + right.length)
+	out.set(left, 0)
+	out.set(right, left.length)
+	return out
+}
+
+/**
+ * Checks whether all samples in the frame are exactly zero.
+ */
 export const isSilent = (frame: PCMFrame): boolean => {
 	for (let i = 0; i < frame.length; i++) {
 		if (frame[i] !== 0) {
@@ -85,6 +147,12 @@ export const isSilent = (frame: PCMFrame): boolean => {
 	return true
 }
 
+/**
+ * Applies a linear gain to every sample and returns a new frame.
+ *
+ * No clipping protection is applied here. Use `clampFrame` or
+ * `normalizeFrame` afterwards when needed.
+ */
 export const applyVolume = (frame: PCMFrame, volume: number): PCMFrame => {
 	const out = new Float32Array(frame.length)
 
@@ -95,11 +163,75 @@ export const applyVolume = (frame: PCMFrame, volume: number): PCMFrame => {
 	return out
 }
 
+/**
+ * Data-first / data-last helper for `applyVolume`.
+ */
 export const withVolume = Function.dual<
 	(volume: number) => (self: PCMFrame) => PCMFrame,
 	(self: PCMFrame, volume: number) => PCMFrame
 >(2, (self, volume) => applyVolume(self, volume))
 
+/**
+ * Mixes multiple frames by averaging sample values.
+ *
+ * This is safer than direct summation because it reduces clipping risk when
+ * several sources are active at the same time.
+ */
+export const averageFrames = (
+	frames: ReadonlyArray<PCMFrame>,
+	frameLength: number,
+): PCMFrame => {
+	if (frames.length === 0) {
+		return new Float32Array(frameLength)
+	}
+
+	const out = new Float32Array(frameLength)
+
+	for (const frame of frames) {
+		for (let i = 0; i < frameLength; i++) {
+			out[i] = out[i]! + (frame[i] ?? 0)
+		}
+	}
+
+	const gain = 1 / frames.length
+
+	for (let i = 0; i < frameLength; i++) {
+		out[i] = out[i]! * gain
+	}
+
+	return out
+}
+
+/**
+ * Performs a linear crossfade between two frames.
+ *
+ * - `t = 0` => only `from`
+ * - `t = 1` => only `to`
+ */
+export const crossfadeFrames = (
+	from: PCMFrame,
+	to: PCMFrame,
+	t: number,
+): PCMFrame => {
+	const length = Math.min(from.length, to.length)
+	const out = new Float32Array(length)
+	const fromGain = 1 - t
+	const toGain = t
+
+	for (let i = 0; i < length; i++) {
+		out[i] = (from[i] ?? 0) * fromGain + (to[i] ?? 0) * toGain
+	}
+
+	return out
+}
+
+/**
+ * Mixes two frames sample-by-sample using averaging when both frames provide
+ * data at the same position.
+ *
+ * If one frame is shorter, the remaining tail of the longer frame is copied
+ * through unchanged.
+ */
 export const mixFrames = (a: PCMFrame, b: PCMFrame, channels: number): PCMFrame => {
 	if (channels <= 0) {
 		return new Float32Array(0)
@@ -133,6 +265,11 @@ export const mixFrames = (a: PCMFrame, b: PCMFrame, channels: number): PCMFrame 
 	return out
 }
 
+/**
+ * Adds two frames sample-by-sample without normalization.
+ *
+ * This is the raw summation primitive. It may produce values outside `[-1, 1]`.
+ */
 export const addFrames = (a: PCMFrame, b: PCMFrame, channels: number): PCMFrame => {
 	if (channels <= 0) {
 		return new Float32Array(0)
@@ -150,6 +287,9 @@ export const addFrames = (a: PCMFrame, b: PCMFrame, channels: number): PCMFrame 
 	return out
 }
 
+/**
+ * Clamps every sample in the frame to a target range.
+ */
 export const clampFrame = (frame: PCMFrame, min = -1, max = 1): PCMFrame => {
 	const out = new Float32Array(frame.length)
 
@@ -161,6 +301,11 @@ export const clampFrame = (frame: PCMFrame, min = -1, max = 1): PCMFrame => {
 	return out
 }
 
+/**
+ * Normalizes the frame so that its peak absolute amplitude becomes `1`.
+ *
+ * Silent frames and already-normalized frames are copied unchanged.
+ */
 export const normalizeFrame = (frame: PCMFrame): PCMFrame => {
 	let peak = 0
 
@@ -184,6 +329,11 @@ export const normalizeFrame = (frame: PCMFrame): PCMFrame => {
 	return out
 }
 
+/**
+ * Resamples an interleaved frame using simple linear interpolation.
+ *
+ * `ratio` is interpreted as `sourceSampleRate / targetSampleRate`.
+ */
 export const resampleInterleavedFrame = (
 	frame: PCMFrame,
 	ratio: number,
@@ -223,6 +373,10 @@ export const resampleInterleavedFrame = (
 	return out
 }
 
+/**
+ * Interprets a byte slice as an interleaved `Float32Array` frame and copies the
+ * samples into a new owned frame.
+ */
 export const fromInterleavedFloat32Bytes = (
 	bytes: Uint8Array<ArrayBufferLike>,
 	frameLength: number,
@@ -235,6 +389,11 @@ export const fromInterleavedFloat32Bytes = (
 	return frame
 }
 
+/**
+ * Decodes a possibly partial `Float32` byte slice into a fixed-size frame.
+ *
+ * Any missing tail samples are left as silence.
+ */
 export const fromPartialInterleavedFloat32Bytes = (
 	bytes: Uint8Array<ArrayBufferLike>,
 	frameLength: number,
@@ -254,5 +413,9 @@ export const fromPartialInterleavedFloat32Bytes = (
 	return frame
 }
 
+/**
+ * Returns the largest prefix of the byte buffer that is aligned to a whole
+ * number of `Float32` samples.
+ */
 export const alignedFloat32ByteLength = (bytes: Uint8Array<ArrayBufferLike>): number =>
 	bytes.length - (bytes.length % Float32Array.BYTES_PER_ELEMENT)

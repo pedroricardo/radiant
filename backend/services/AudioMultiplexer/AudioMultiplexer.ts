@@ -1,5 +1,6 @@
 import { Chunk, Duration, Effect, Queue, Ref, Scope, Stream } from "effect"
 import * as AudioSource from "../../lib/AudioSource"
+import * as PCM from "../../lib/PCM"
 import {
 	DEFAULT_CHANNELS,
 	DEFAULT_CROSSFADE_DURATION,
@@ -13,7 +14,6 @@ import {
 	MultiplexerInvalidMasterVolumeError,
 } from "./Error"
 import * as internal from "./internal"
-import { applyGain, crossfadeFrames, makeSilenceFrame } from "./internal/audio"
 import {
 	createRuntimeCluster,
 	crossfadeSamples,
@@ -165,7 +165,7 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 				})
 			}
 
-			let frame = makeSilenceFrame(frameLength)
+			let frame = PCM.emptyFrame(config.frameSamples, config.channels)
 			let activeCluster = state.activeCluster
 			let fadingOutCluster = state.fadingOutCluster
 			let fadeProgressSamples = state.fadeProgressSamples
@@ -174,7 +174,7 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 				const oldFrame = yield* renderClusterFrame(fadingOutCluster, frameLength, config.channels)
 				const newFrame = yield* renderClusterFrame(activeCluster, frameLength, config.channels)
 				const t = Math.min(1, fadeProgressSamples / state.fadeTotalSamples)
-				frame = crossfadeFrames(oldFrame.frame, newFrame.frame, t)
+				frame = PCM.crossfadeFrames(oldFrame.frame, newFrame.frame, t)
 				fadeProgressSamples += config.frameSamples
 				activeCluster = newFrame.cluster.sources.length > 0 ? newFrame.cluster : null
 				fadingOutCluster =
@@ -198,7 +198,7 @@ export class AudioMultiplexer extends Effect.Service<AudioMultiplexer>()("AudioM
 				fadeProgressSamples,
 			})
 
-			return applyGain(frame, state.masterVolume)
+			return PCM.applyVolume(frame, state.masterVolume)
 		})
 		const output = Stream.repeatEffect(nextFrame)
 		const outputFactory = Stream.broadcastDynamic(output, {
