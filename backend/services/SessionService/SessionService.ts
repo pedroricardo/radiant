@@ -21,7 +21,7 @@ export class SessionService extends Effect.Service<SessionService>()("SessionSer
 				Effect.gen(function* () {
 					yield* Effect.logInfo("db.sessions.createSessionForUser")
 
-					const createdAt = yield* DateTime.nowAsDate
+					const createdAt = yield* Effect.map(DateTime.nowAsDate, (d) => d.toISOString())
 					const rows = yield* Effect.tryPromise({
 						try: () =>
 							db.insert(sessions).values({ userId, createdAt }).returning({ id: sessions.id }),

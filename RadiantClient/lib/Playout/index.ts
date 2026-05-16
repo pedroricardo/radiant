@@ -33,12 +33,13 @@ export const ScheduleWeeklyBlock = Schema.Struct({
 	mediaNodeId: Schema.NullOr(MediaNode.MediaNodeId),
 	playlistFillMode: Schema.NullOr(PlaylistFillMode),
 	playbackMode: BlockPlaybackMode,
-	modeAfterPlayback: ModeAfterPlayback,
-	createdAt: Schema.DateTimeUtc,
-	updatedAt: Schema.DateTimeUtc,
+	modeAfterPlayback: ModeAfterPlayback.pipe(Schema.optionalWith({ default: () => "overlay" })),
+	createdAt: Schema.DateTimeZoned,
+	updatedAt: Schema.DateTimeZoned,
 })
 
 export type ScheduleWeeklyBlock = typeof ScheduleWeeklyBlock.Type
+export type ScheduleWeeklyBlockE = typeof ScheduleWeeklyBlock.Encoded
 
 export const scheduleOneOffBlockIdPrefix = "sob" as const
 export const ScheduleOneOffBlockId = Id.schema(scheduleOneOffBlockIdPrefix)
@@ -47,16 +48,16 @@ export type ScheduleOneOffBlockId = typeof ScheduleOneOffBlockId.Type
 export const ScheduleOneOffBlock = Schema.Struct({
 	id: ScheduleOneOffBlockId,
 	radioId: Radio.RadioId,
-	startsAt: Schema.DateTimeUtc,
-	endsAt: Schema.DateTimeUtc,
+	startsAt: Schema.DateTimeZoned,
+	endsAt: Schema.DateTimeZoned,
 	targetType: ScheduleTargetType,
 	playlistId: Schema.NullOr(Playlist.PlaylistId),
 	mediaNodeId: Schema.NullOr(MediaNode.MediaNodeId),
 	playlistFillMode: Schema.NullOr(PlaylistFillMode),
 	playbackMode: BlockPlaybackMode,
-	modeAfterPlayback: ModeAfterPlayback,
-	createdAt: Schema.DateTimeUtc,
-	updatedAt: Schema.DateTimeUtc,
+	modeAfterPlayback: ModeAfterPlayback.pipe(Schema.optionalWith({ default: () => "overlay" })),
+	createdAt: Schema.DateTimeZoned,
+	updatedAt: Schema.DateTimeZoned,
 })
 
 export type ScheduleOneOffBlock = typeof ScheduleOneOffBlock.Type
@@ -69,12 +70,12 @@ export const PlayoutInterruption = Schema.Struct({
 	id: PlayoutInterruptionId,
 	radioId: Radio.RadioId,
 	mediaNodeId: MediaNode.MediaNodeId,
-	startsAt: Schema.DateTimeUtc,
+	startsAt: Schema.DateTimeZoned,
 	endsAt: Schema.NullOr(Schema.DateTimeUtc),
 	modeAfterPlayback: ModeAfterPlayback,
 	createdByUserId: Schema.NullOr(User.UserId),
 	note: Schema.NullOr(Schema.String),
-	createdAt: Schema.DateTimeUtc,
+	createdAt: Schema.DateTimeZoned,
 })
 
 export type PlayoutInterruption = typeof PlayoutInterruption.Type

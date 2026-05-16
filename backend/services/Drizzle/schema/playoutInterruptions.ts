@@ -17,13 +17,13 @@ export const playoutInterruptions = pgTable("playout_interruptions", {
 	mediaNodeId: mediaNodeIdType()
 		.notNull()
 		.references(() => mediaNodes.id, { onDelete: "restrict" }),
-	startsAt: timestamp({ withTimezone: true }).notNull(),
-	endsAt: timestamp({ withTimezone: true }),
+	startsAt: timestamp({ withTimezone: true, mode: "string" }).notNull(),
+	endsAt: timestamp({ withTimezone: true, mode: "string" }),
 	modeAfterPlayback: text({ enum: ["overlay"] })
 		.$type<Playout.ModeAfterPlayback>()
 		.notNull()
 		.default("overlay"),
 	createdByUserId: userIdType().references(() => users.id, { onDelete: "set null" }),
 	note: varchar(),
-	createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+	createdAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
 })

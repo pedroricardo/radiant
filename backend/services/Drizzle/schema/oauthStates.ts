@@ -5,8 +5,8 @@ export const oauthStates = pgTable(
 	{
 		provider: text().notNull(),
 		state: text().notNull(),
-		createdAt: timestamp({ withTimezone: true }).notNull(),
-		consumedAt: timestamp({ withTimezone: true }),
+		createdAt: timestamp({ withTimezone: true, mode: "string" }).notNull(),
+		consumedAt: timestamp({ withTimezone: true, mode: "string" }),
 	},
 	(t) => [
 		primaryKey({

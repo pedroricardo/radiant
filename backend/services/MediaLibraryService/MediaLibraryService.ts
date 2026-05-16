@@ -1,5 +1,5 @@
 import { and, asc, eq, isNull, ne } from "drizzle-orm"
-import { Context, DateTime, Effect, Layer, Stream } from "effect"
+import { Context, DateTime, Effect, Layer, Schema, Stream } from "effect"
 import { createHash } from "node:crypto"
 
 import {
@@ -11,6 +11,7 @@ import {
 	MediaLibraryServiceError,
 	MediaLibraryStorageQuotaExceededError,
 } from "@radiant/client/lib/MediaLibrary"
+import type { ParseError } from "effect/ParseResult"
 import { Id, MediaLibrary, MediaNode, Radio, User } from "../../lib"
 import { Drizzle } from "../Drizzle"
 import { mediaNodeAudioMetadata } from "../Drizzle/schema/mediaNodeAudioMetadata"
@@ -74,8 +75,8 @@ const toMediaLibraryTree = (
 const toMediaNode = (
 	node: DbMediaNode,
 	audioMetadata: DbMediaNodeAudioMetadata | null,
-): MediaNode.MediaNode =>
-	MediaNode.MediaNode.make({
+): Effect.Effect<MediaNode.MediaNode, ParseError> =>
+	Schema.decode(MediaNode.MediaNode)({
 		id: node.id,
 		radioId: node.radioId,
 		parentId: node.parentId ?? null,
@@ -103,8 +104,8 @@ const toMediaNode = (
 		sampleRate: audioMetadata?.sampleRate ?? null,
 		channels: audioMetadata?.channels ?? null,
 		fileHash: audioMetadata?.fileHash ?? null,
-		createdAt: DateTime.unsafeFromDate(node.createdAt),
-		updatedAt: DateTime.unsafeFromDate(node.updatedAt),
+		createdAt: node.createdAt,
+		updatedAt: node.updatedAt,
 	})
 
 const isUniqueViolation = (cause: unknown) =>
@@ -184,6 +185,13 @@ export class MediaLibraryService extends Context.Tag("MediaLibraryService")<
 			radioId: Radio.RadioId
 			nodeId: MediaNode.MediaNodeId
 		}) => Effect.Effect<void, MediaLibraryServiceError | MediaLibraryNodeNotFoundError>
+		readonly getNode: (args: {
+			radioId: Radio.RadioId
+			nodeId: MediaNode.MediaNodeId
+		}) => Effect.Effect<
+			MediaNode.MediaNode,
+			MediaLibraryServiceError | MediaLibraryNodeNotFoundError
+		>
 	}
 >() {}
 
@@ -200,6 +208,7 @@ export const MockStaticMediaLibraryService: Layer.Layer<MediaLibraryService> = L
 		renameNode: () => Effect.dieMessage("MockStaticMediaLibraryService.renameNode not implemented"),
 		moveNode: () => Effect.dieMessage("MockStaticMediaLibraryService.moveNode not implemented"),
 		deleteNode: () => Effect.dieMessage("MockStaticMediaLibraryService.deleteNode not implemented"),
+		getNode: () => Effect.dieMessage("MockStaticMediaLibraryService.getNode not implemented"),
 	},
 )
 
@@ -518,7 +527,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 								)
 						}
 
-						const now = yield* DateTime.nowAsDate
+						const now = yield* Effect.map(DateTime.nowAsDate, (d) => d.toISOString())
 						const fileHash = hash.digest("hex")
 						const nodeRows = yield* Effect.tryPromise({
 							try: () =>
@@ -602,7 +611,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 							),
 						)
 
-						return toMediaNode(nodeRows[0]!, metadataRows[0]!)
+						return yield* toMediaNode(nodeRows[0]!, metadataRows[0]!).pipe(Effect.orDie)
 					}),
 				),
 
@@ -633,7 +642,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 				Effect.gen(function* () {
 					yield* ensureParentFolder(radioId, parentId)
 					yield* ensureSiblingNameAvailable({ radioId, parentId, name })
-					const updatedAt = yield* DateTime.nowAsDate
+					const updatedAt = yield* Effect.map(DateTime.nowAsDate, (d) => d.toISOString())
 					const createdAt = updatedAt
 					const rows = yield* Effect.tryPromise({
 						try: () =>
@@ -656,7 +665,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 										message: "failed to create folder",
 									}),
 					})
-					return toMediaNode(rows[0]!, null)
+					return yield* toMediaNode(rows[0]!, null).pipe(Effect.orDie)
 				}),
 
 			renameNode: ({ radioId, nodeId, name }) =>
@@ -668,7 +677,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 						name,
 						excludeNodeId: node.id,
 					})
-					const updatedAt = yield* DateTime.nowAsDate
+					const updatedAt = yield* Effect.map(DateTime.nowAsDate, (d) => d.toISOString())
 					const rows = yield* Effect.tryPromise({
 						try: () =>
 							db
@@ -685,7 +694,9 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 									}),
 					})
 					const row = yield* getNodeRowOrFail(radioId, rows[0]!.id)
-					return toMediaNode(row.media_nodes, row.media_node_audio_metadata)
+					return yield* toMediaNode(row.media_nodes, row.media_node_audio_metadata).pipe(
+						Effect.orDie,
+					)
 				}),
 
 			moveNode: ({ radioId, nodeId, parentId }) =>
@@ -724,7 +735,7 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 								.parentId ?? null
 					}
 
-					const updatedAt = yield* DateTime.nowAsDate
+					const updatedAt = yield* Effect.map(DateTime.nowAsDate, (d) => d.toISOString())
 					const rows = yield* Effect.tryPromise({
 						try: () =>
 							db
@@ -741,7 +752,9 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 									}),
 					})
 					const row = yield* getNodeRowOrFail(radioId, rows[0]!.id)
-					return toMediaNode(row.media_nodes, row.media_node_audio_metadata)
+					return yield* toMediaNode(row.media_nodes, row.media_node_audio_metadata).pipe(
+						Effect.orDie,
+					)
 				}),
 
 			deleteNode: ({ radioId, nodeId }) =>
@@ -811,6 +824,10 @@ export const DatabaseMediaLibraryService: Layer.Layer<
 							}),
 					})
 				}),
+			getNode: Effect.fn(function* ({ radioId, nodeId }) {
+				const row = yield* getNodeRowOrFail(radioId, nodeId)
+				return yield* toMediaNode(row.media_nodes, row.media_node_audio_metadata).pipe(Effect.orDie)
+			}),
 		}
 	}),
 )

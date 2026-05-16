@@ -10,7 +10,7 @@ export const users = pgTable(
 		email: varchar().notNull(),
 		avatarUrl: varchar().notNull(),
 		storageQuotaBytes: bigint({ mode: "bigint" }),
-		createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+		createdAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
 	},
 	(users) => [uniqueIndex("usersEmailIndex").on(users.email)],
 )

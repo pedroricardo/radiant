@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { Option } from "effect"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
@@ -321,10 +321,7 @@ describe("DateTime Experiments for Radiant Calendar", () => {
 		it("should correctly identify weekday numbers", () => {
 			// 27 de Janeiro de 2025 é segunda-feira
 			const monday = DateTime.unsafeMake("2025-01-27T10:00:00Z")
-			const mondayZoned = DateTime.setZone(
-				monday,
-				DateTime.zoneUnsafeMakeNamed("Europe/Lisbon"),
-			)
+			const mondayZoned = DateTime.setZone(monday, DateTime.zoneUnsafeMakeNamed("Europe/Lisbon"))
 			const mondayParts = DateTime.toParts(mondayZoned)
 
 			expect(mondayParts.weekDay).toBe(1) // 0=Sunday, 1=Monday, ..., 6=Saturday
@@ -356,7 +353,7 @@ describe("DateTime Experiments for Radiant Calendar", () => {
 				},
 			)
 
-			const resolved = Option.getOrThrow(gapTime);
+			const resolved = Option.getOrThrow(gapTime)
 			const parts = DateTime.toParts(resolved)
 
 			// Deve resolver para 02:30 (after the gap)
@@ -381,7 +378,7 @@ describe("DateTime Experiments for Radiant Calendar", () => {
 					disambiguation: "earlier",
 				},
 			)
-			const resolved = Option.getOrThrow(gapTime);
+			const resolved = Option.getOrThrow(gapTime)
 
 			const parts = DateTime.toParts(resolved)
 
@@ -479,7 +476,7 @@ describe("DateTime Experiments for Radiant Calendar", () => {
 					disambiguation: "compatible",
 				},
 			)
-			const resolved = Option.getOrThrow(ambiguousTime);
+			const resolved = Option.getOrThrow(ambiguousTime)
 
 			// Primeira ocorrência = CEST (UTC+1)
 			const offset = DateTime.zonedOffset(resolved)
@@ -503,7 +500,7 @@ describe("DateTime Experiments for Radiant Calendar", () => {
 					disambiguation: "earlier",
 				},
 			)
-			const resolved = Option.getOrThrow(ambiguousTime);
+			const resolved = Option.getOrThrow(ambiguousTime)
 
 			const offset = DateTime.zonedOffset(resolved)
 
@@ -527,7 +524,7 @@ describe("DateTime Experiments for Radiant Calendar", () => {
 					disambiguation: "later",
 				},
 			)
-			const resolved = Option.getOrThrow(ambiguousTime);
+			const resolved = Option.getOrThrow(ambiguousTime)
 
 			const offset = DateTime.zonedOffset(resolved)
 
@@ -985,8 +982,6 @@ describe("DateTime Experiments for Radiant Calendar", () => {
 		expect(DateTime.toParts(calendarAdded).hours).toBe(2)
 		expect(DateTime.toParts(calendarAdded).minutes).toBe(30)
 
-		expect(DateTime.toEpochMillis(calendarAdded)).toBe(
-			DateTime.toEpochMillis(durationAdded),
-		)
+		expect(DateTime.toEpochMillis(calendarAdded)).toBe(DateTime.toEpochMillis(durationAdded))
 	})
 })

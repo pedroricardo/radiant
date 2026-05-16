@@ -10,6 +10,7 @@ import { Drizzle } from "../services/Drizzle"
 import { radios } from "../services/Drizzle/schema/radios"
 import * as MediaLibraryService from "../services/MediaLibraryService"
 import * as MetadataExtractionService from "../services/MetadataExtractionService"
+import { PlayoutManager } from "../services/PlayoutManager"
 import * as RadioManager from "../services/RadioManager"
 import * as SessionService from "../services/SessionService"
 import * as StorageService from "../services/StorageService"
@@ -118,7 +119,12 @@ const authServiceLayer = AuthService.AuthService.Default.pipe(
 	Layer.provide(userRepoLayer),
 )
 const oauthStateCheckerLayer = OAuth.layerDrizzle.pipe(Layer.provide(dbLayer))
-const radioManagerLayer = RadioManager.RadioManager.Default.pipe(Layer.provide(dbLayer))
+const radioManagerLayer = RadioManager.RadioManager.Default.pipe(
+	Layer.provide(PlayoutManager.Default),
+	Layer.provide(RadioManager.RadioRepository.Default),
+	Layer.provide(mediaLibraryLayer),
+	Layer.provide(dbLayer),
+)
 
 const makeSilentWav = (durationMs: number) => {
 	const sampleRate = 44_100

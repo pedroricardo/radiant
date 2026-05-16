@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm"
-import { DateTime, Effect, Option } from "effect"
+import { DateTime, Effect, Schema } from "effect"
 import { UserRepositoryError } from "../../../RadiantClient/lib/User/Http"
 import { User } from "../../lib"
 import { Drizzle } from "../Drizzle"
@@ -45,12 +45,13 @@ export class UserRepository extends Effect.Service<UserRepository>()("UserReposi
 							}),
 					})
 
-					return Option.fromNullable(rows[0]).pipe(
-						Option.map((u) =>
-							User.User.make({
-								...u,
-								createdAt: DateTime.unsafeFromDate(u.createdAt),
-							}),
+					return yield* Schema.decode(Schema.OptionFromUndefinedOr(User.User))(rows[0]).pipe(
+						Effect.mapError(
+							(e) =>
+								new UserRepositoryError({
+									cause: e,
+									message: "parsing user object failed",
+								}),
 						),
 					)
 				}).pipe(
@@ -63,7 +64,7 @@ export class UserRepository extends Effect.Service<UserRepository>()("UserReposi
 				Effect.gen(function* () {
 					yield* Effect.logInfo("db.users.createUser")
 
-					const createdAt = yield* DateTime.nowAsDate
+					const createdAt = yield* Effect.map(DateTime.nowAsDate, (d) => d.toISOString())
 					const inserted = yield* Effect.tryPromise({
 						try: () =>
 							db

@@ -37,7 +37,7 @@ export const layerDrizzle = Layer.effect(
 						return yield* new UserNotFoundError({ userId })
 					}
 
-					const now = yield* DateTime.nowAsDate
+					const now = yield* Effect.map(DateTime.nowAsDate, (d) => d.toISOString())
 					yield* Effect.tryPromise({
 						try: () =>
 							db

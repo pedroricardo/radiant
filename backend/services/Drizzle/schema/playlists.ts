@@ -30,8 +30,8 @@ export const playlists = pgTable(
 		preventImmediateRepeats: boolean().notNull().default(false),
 		crossfadeOverrideMs: integer(),
 		jingleMinGapTracks: integer(),
-		createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
-		updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+		createdAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
+		updatedAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
 	},
 	(playlists) => [uniqueIndex("playlists_radio_name_index").on(playlists.radioId, playlists.name)],
 )

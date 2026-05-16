@@ -1,6 +1,6 @@
 import { HttpServer } from "@effect/platform"
 import { Layer } from "effect"
-import { IcyEncoder, RadioManager } from "./services"
+import { IcyEncoder, PlayoutManager, RadioManager } from "./services"
 import { AuthService } from "./services/AuthService/AuthService"
 import * as OAuth from "./services/AuthService/oauth"
 import { layerDrizzle as oauthStateCheckerLayer } from "./services/AuthService/oauth"
@@ -40,10 +40,6 @@ const authServiceLayer = AuthService.Default.pipe(
 
 const oauthStateLayer = oauthStateCheckerLayer.pipe(Layer.provideMerge(dbLayer))
 
-const radioManagerLayer = RadioManager.layer.pipe(
-	Layer.provideMerge(IcyEncoder.layer),
-	Layer.provideMerge(dbLayer),
-)
 const storageServiceLayer = StorageService.LocalDiskStorageService.pipe(
 	Layer.provideMerge(HttpServer.layerContext),
 )
@@ -54,6 +50,13 @@ const mediaLibraryServiceLayer = MediaLibraryService.DatabaseMediaLibraryService
 	Layer.provideMerge(storageServiceLayer),
 )
 
+const radioManagerLayer = RadioManager.layer.pipe(
+	Layer.provideMerge(IcyEncoder.layer),
+	Layer.provideMerge(PlayoutManager.layer),
+	Layer.provideMerge(RadioManager.RadioRepository.Default),
+	Layer.provideMerge(dbLayer),
+	Layer.provideMerge(mediaLibraryServiceLayer),
+)
 export const ProductionLayer = Layer.mergeAll(
 	dbLayer,
 	userRepoLayer,

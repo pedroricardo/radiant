@@ -1,101 +1,41 @@
+import { FileSystem } from "@effect/platform"
 import { AudioSourceConfigurationError } from "@radiant/client/lib/AudioSourceErrors"
 import { Chunk, Data, Effect, Fiber, Function, Option, Stream } from "effect"
+
 import {
 	DEFAULT_CHANNELS,
 	DEFAULT_FRAME_SAMPLES,
 	DEFAULT_SAMPLE_RATE,
 } from "../../services/AudioMultiplexer/constants"
+import * as PCM from "../PCM"
 
 type IsUnion<T, U = T> = T extends any ? ([U] extends [T] ? false : true) : never
+
 type ValidSampleRate<T extends number> = number extends T
 	? never
 	: IsUnion<T> extends true
 		? never
 		: T
+
 export * from "@radiant/client/lib/AudioSourceErrors"
-const validateConfig = (sampleRate: number, channels: number) =>
-	Effect.gen(function* () {
-		if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
-			return yield* Effect.fail(
-				new AudioSourceConfigurationError({
-					message: `invalid sampleRate: ${sampleRate}`,
-				}),
-			)
-		}
 
-		if (!Number.isInteger(channels) || channels <= 0) {
-			return yield* Effect.fail(
-				new AudioSourceConfigurationError({
-					message: `invalid channels: ${channels}`,
-				}),
-			)
-		}
-	})
+export const validateConfig = PCM.validateConfig
 
-const frameSamplesPerChannel = (frame: Float32Array, channels: number): number =>
-	Math.floor(frame.length / channels)
-
-const mixFrames = (a: Float32Array, b: Float32Array, channels: number): Float32Array => {
-	if (channels <= 0) {
-		return new Float32Array(0)
+export const concatUint8Arrays = (
+	left: Uint8Array<ArrayBufferLike>,
+	right: Uint8Array<ArrayBufferLike>,
+): Uint8Array<ArrayBufferLike> => {
+	if (left.length === 0) {
+		return right
 	}
 
-	const aSamples = frameSamplesPerChannel(a, channels)
-	const bSamples = frameSamplesPerChannel(b, channels)
-	const outSamples = Math.max(aSamples, bSamples)
-	const out = new Float32Array(outSamples * channels)
-
-	for (let sample = 0; sample < outSamples; sample++) {
-		for (let channel = 0; channel < channels; channel++) {
-			const index = sample * channels + channel
-			const aDefined = sample < aSamples
-			const bDefined = sample < bSamples
-			const aValue = aDefined ? a[index]! : 0
-			const bValue = bDefined ? b[index]! : 0
-
-			if (aDefined && bDefined) {
-				out[index] = (aValue + bValue) * 0.5
-			} else if (aDefined) {
-				out[index] = aValue
-			} else if (bDefined) {
-				out[index] = bValue
-			}
-		}
+	if (right.length === 0) {
+		return left
 	}
 
-	return out
-}
-
-const resampleInterleavedFrame = (
-	frame: Float32Array,
-	ratio: number,
-	channels: number,
-): Float32Array => {
-	if (channels <= 0) {
-		return new Float32Array(0)
-	}
-
-	const sourceSamplesPerChannel = frameSamplesPerChannel(frame, channels)
-
-	if (sourceSamplesPerChannel === 0) {
-		return new Float32Array(0)
-	}
-
-	const targetSamplesPerChannel = Math.floor(sourceSamplesPerChannel / ratio)
-	const out = new Float32Array(targetSamplesPerChannel * channels)
-
-	for (let channel = 0; channel < channels; channel++) {
-		for (let sample = 0; sample < targetSamplesPerChannel; sample++) {
-			const position = sample * ratio
-			const i0 = Math.floor(position)
-			const i1 = Math.min(i0 + 1, sourceSamplesPerChannel - 1)
-			const t = position - i0
-			const s0 = frame[i0 * channels + channel]!
-			const s1 = frame[i1 * channels + channel]!
-
-			out[sample * channels + channel] = s0 * (1 - t) + s1 * t
-		}
-	}
+	const out = new Uint8Array(left.length + right.length)
+	out.set(left, 0)
+	out.set(right, left.length)
 
 	return out
 }
@@ -109,58 +49,56 @@ export class AudioSource<
 	readonly channels: number
 	readonly stream: Stream.Stream<Float32Array, E, R>
 }> {}
+
 export const fromPCM = <const SampleRate extends number>(
 	pcm: Float32Array[],
 	sampleRate: SampleRate,
 	channels = 2,
 ) =>
 	Effect.gen(function* () {
-		yield* validateConfig(sampleRate, channels)
+		yield* PCM.validateConfig(sampleRate, channels)
+
 		return new AudioSource({
 			sampleRate,
 			channels,
 			stream: Stream.fromIterable(pcm),
 		})
 	})
+
 export const fromLiveStream = <const SampleRate extends number, E, R>(
 	stream: Stream.Stream<Float32Array, E, R>,
 	sampleRate: SampleRate,
 	channels = 2,
 ) =>
 	Effect.gen(function* () {
-		yield* validateConfig(sampleRate, channels)
+		yield* PCM.validateConfig(sampleRate, channels)
+
 		return new AudioSource({
 			sampleRate,
 			channels,
 			stream,
 		})
 	})
-const concatUint8Arrays = (
-	left: Uint8Array<ArrayBufferLike>,
-	right: Uint8Array<ArrayBufferLike>,
-): Uint8Array<ArrayBufferLike> => {
-	if (left.length === 0) {
-		return right
-	}
-	if (right.length === 0) {
-		return left
-	}
-
-	const out = new Uint8Array(left.length + right.length)
-	out.set(left, 0)
-	out.set(right, left.length)
-	return out
-}
 
 export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string) {
+	const fs = yield* FileSystem.FileSystem
+
 	const sampleRate = DEFAULT_SAMPLE_RATE
 	const channels = DEFAULT_CHANNELS
-	const frameLength = DEFAULT_FRAME_SAMPLES * channels
-	const frameByteLength = frameLength * Float32Array.BYTES_PER_ELEMENT
+	const frameLength = PCM.frameLength(DEFAULT_FRAME_SAMPLES, channels)
+	const frameByteLength = PCM.frameByteLength(DEFAULT_FRAME_SAMPLES, channels)
 
-	yield* validateConfig(sampleRate, channels)
+	yield* PCM.validateConfig(sampleRate, channels)
 
-	const exists = yield* Effect.promise(() => Bun.file(path).exists())
+	const exists = yield* fs.exists(path).pipe(
+		Effect.mapError(
+			(cause) =>
+				new AudioSourceConfigurationError({
+					message: `failed to check if audio file exists: ${path}: ${String(cause)}`,
+				}),
+		),
+	)
+
 	if (!exists) {
 		return yield* Effect.fail(
 			new AudioSourceConfigurationError({
@@ -243,24 +181,22 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string)
 						if (pendingBytes.length >= frameByteLength) {
 							const frameBytes = pendingBytes.subarray(0, frameByteLength)
 							const leftovers = pendingBytes.subarray(frameByteLength)
-							const pcmView = new Float32Array(
-								frameBytes.buffer,
-								frameBytes.byteOffset,
-								frameLength,
-							)
-							const frame = new Float32Array(frameLength)
-							frame.set(pcmView, 0)
+
+							const frame = PCM.fromInterleavedFloat32Bytes(frameBytes, frameLength)
 
 							pendingBytes = new Uint8Array(leftovers)
 							emittedAnyFrame = true
+
 							return Chunk.of(frame)
 						}
 
 						const nextChunk = yield* Effect.either(bytePull)
+
 						if (nextChunk._tag === "Right") {
 							for (const bytes of Chunk.toReadonlyArray(nextChunk.right)) {
 								pendingBytes = concatUint8Arrays(pendingBytes, bytes)
 							}
+
 							continue
 						}
 
@@ -277,6 +213,7 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string)
 								),
 							),
 						)
+
 						const stderr = yield* Fiber.join(stderrFiber).pipe(
 							Effect.mapError((cause) =>
 								Option.some(
@@ -300,25 +237,24 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string)
 						if (pendingBytes.length === 0) {
 							if (!emittedAnyFrame) {
 								emittedAnyFrame = true
-								return Chunk.of(new Float32Array(frameLength))
+								return Chunk.of(PCM.emptyFrame(DEFAULT_FRAME_SAMPLES, channels))
 							}
+
 							return yield* Effect.fail(Option.none())
 						}
 
 						const alignedByteLength =
 							pendingBytes.length - (pendingBytes.length % Float32Array.BYTES_PER_ELEMENT)
+
 						if (alignedByteLength === 0) {
 							return yield* Effect.fail(Option.none())
 						}
 
-						const sampleCount = alignedByteLength / Float32Array.BYTES_PER_ELEMENT
-						const frame = new Float32Array(frameLength)
-						frame.set(
-							new Float32Array(pendingBytes.buffer, pendingBytes.byteOffset, sampleCount),
-							0,
-						)
+						const frame = PCM.fromPartialInterleavedFloat32Bytes(pendingBytes, frameLength)
+
 						pendingBytes = new Uint8Array(0)
 						emittedAnyFrame = true
+
 						return Chunk.of(frame)
 					}
 				})
@@ -328,6 +264,7 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string)
 		),
 	})
 })
+
 export const combineSources = Function.dual<
 	<const SampleRate extends number, E2, R2>(
 		that: AudioSource<ValidSampleRate<SampleRate>, E2, R2>,
@@ -355,7 +292,7 @@ export const combineSources = Function.dual<
 		other: that.stream,
 		onSelf: (a) => a,
 		onOther: (b) => b,
-		onBoth: (a, b) => mixFrames(a, b, self.channels),
+		onBoth: (a, b) => PCM.mixFrames(a, b, self.channels),
 	})
 
 	return new AudioSource({
@@ -364,6 +301,7 @@ export const combineSources = Function.dual<
 		stream,
 	})
 })
+
 export const withVolume = Function.dual<
 	(
 		volume: number,
@@ -375,17 +313,7 @@ export const withVolume = Function.dual<
 		volume: number,
 	) => AudioSource<ValidSampleRate<SampleRate>, E, R>
 >(2, (self, volume) => {
-	const stream = self.stream.pipe(
-		Stream.map((frame) => {
-			const out = new Float32Array(frame.length)
-
-			for (let i = 0; i < frame.length; i++) {
-				out[i] = frame[i]! * volume
-			}
-
-			return out
-		}),
-	)
+	const stream = self.stream.pipe(Stream.map((frame) => PCM.withVolume(frame, volume)))
 
 	return new AudioSource({
 		sampleRate: self.sampleRate,
@@ -393,6 +321,7 @@ export const withVolume = Function.dual<
 		stream,
 	})
 })
+
 export const resampleTo = Function.dual<
 	<const TargetRate extends number>(
 		targetRate: TargetRate,
@@ -427,7 +356,7 @@ export const resampleTo = Function.dual<
 	const ratio = self.sampleRate / targetRate
 
 	const stream = self.stream.pipe(
-		Stream.map((frame) => resampleInterleavedFrame(frame, ratio, self.channels)),
+		Stream.map((frame) => PCM.resampleInterleavedFrame(frame, ratio, self.channels)),
 	)
 
 	return new AudioSource({
@@ -436,3 +365,5 @@ export const resampleTo = Function.dual<
 		stream,
 	})
 })
+
+export * from "./decoding"

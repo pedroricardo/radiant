@@ -45,7 +45,7 @@ export const layerDrizzle = Layer.effect(
 					yield* Effect.logDebug("oauthState.issue")
 
 					const state = arctic.generateState()
-					const createdAt = yield* DateTime.nowAsDate
+					const createdAt = yield* Effect.map(DateTime.nowAsDate, (d) => d.toISOString())
 					yield* Effect.tryPromise({
 						try: () =>
 							db.insert(oauthStates).values({
@@ -69,7 +69,7 @@ export const layerDrizzle = Layer.effect(
 				Effect.gen(function* () {
 					yield* Effect.logDebug("oauthState.consume")
 
-					const consumedAt = yield* DateTime.nowAsDate
+					const consumedAt = yield* Effect.map(DateTime.nowAsDate, (d) => d.toISOString())
 					const rows = yield* Effect.tryPromise({
 						try: () =>
 							db

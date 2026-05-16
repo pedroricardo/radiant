@@ -16,6 +16,6 @@ export const radios = pgTable("radios", {
 	createdByUserId: userIdType()
 		.notNull()
 		.references(() => users.id, { onDelete: "restrict" }),
-	createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+	createdAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
+	updatedAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
 })
