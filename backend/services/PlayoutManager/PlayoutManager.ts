@@ -224,11 +224,11 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 			return yield* pipe(
 				Match.value(timelineHit),
 				Match.tagsExhaustive({
-					Silence: Effect.fn(function* () {
+					Silence: (_) => Effect.gen(function* () {
 						yield* multiplexer.setCluster([])
 					}),
 
-					AudioFile: Effect.fn(function* (hit) {
+					AudioFile: (hit) => Effect.gen(function* () {
 						/**
 						 * Ajusta isto ao nome real da coluna/campo do teu MediaNode.
 						 *
@@ -241,7 +241,7 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 						 * em várias instâncias horizontais.
 						 */
 						const storageKey = hit.mediaNode.storageKey
-
+						assert.ok(storageKey); // Se é um ficheiro de audio, ele necessariamente vai ter um storageKey, se não tiver, o banco de dados tá corrompido
 						const encodedAudioStream = yield* storage.readObject(storageKey)
 
 						const source = yield* AudioSource.fromEncodedAudioFileStream(encodedAudioStream, {
@@ -257,7 +257,7 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 						])
 					}),
 
-					Playlist: Effect.fn(function* () {
+					Playlist: (playlist) => Effect.gen(function* () {
 						return yield* Effect.die("playlist takeover is not implemented yet")
 					}),
 				}),
