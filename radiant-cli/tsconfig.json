@@ -1,0 +1,15 @@
+{
+	"extends": "../tsconfig.base.json",
+	"compilerOptions": {
+		"paths": {
+			"@radiant/backend": ["../backend/index.ts"],
+			"@radiant/backend/*": ["../backend/*"],
+			"@radiant/client": ["../RadiantClient/index.ts"],
+			"@radiant/client/*": ["../RadiantClient/*"],
+			"@radiant/cli": ["./src/index.ts"],
+			"@radiant/cli/*": ["./src/*"]
+		}
+	},
+	"include": ["./src/**/*.ts"],
+	"exclude": ["./node_modules"]
+}
