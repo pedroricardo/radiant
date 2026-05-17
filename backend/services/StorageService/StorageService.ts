@@ -51,7 +51,7 @@ export const LocalDiskStorageService = Layer.effect(
 		const fs = yield* FileSystem.FileSystem
 		const path = yield* Path.Path
 		const root = yield* Config.string("RADIANT_STORAGE_ROOT").pipe(
-			Config.withDefault(".radiant-storage"),
+			Config.withDefault(import.meta.dirname + "/.radiant-storage"),
 		)
 
 		const ensureParentDirectory = (key: string) =>
