@@ -306,23 +306,19 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 						Effect.gen(function* () {
 							const storageKey = hit.mediaNode.storageKey
 							assert.ok(storageKey) // Se é um ficheiro de audio, ele necessariamente vai ter um storageKey, se não tiver, o banco de dados tá corrompido
-							const filePath = yield* StorageService.readObjectAsTempFileScoped(storageKey).pipe(
-								Effect.provideService(StorageService.StorageService, storage),
-							)
-
 							yield* Effect.logInfo("playout.apply_audio_file").pipe(
 								Effect.annotateLogs({
 									radioId,
 									mediaNodeId: hit.mediaNode.id,
 									storageKey,
 									playbackPositionMs: Duration.toMillis(hit.playbackPosition),
-									filePath,
 								}),
 							)
 
-							const source = yield* AudioSource.fromAudioFile(filePath, {
+							const source = yield* AudioSource.fromStorageObject(storageKey, {
 								seek: hit.playbackPosition,
 							}).pipe(
+								Effect.provideService(StorageService.StorageService, storage),
 								Effect.map(AudioSource.mapStream(Stream.timeout("3 seconds"))),
 								Effect.map(AudioSource.mapStream(Stream.tap(Effect.logTrace))),
 							)

@@ -1,6 +1,6 @@
 import { MediaNode, Playout, Radio } from "@radiant/client"
 import { expect } from "bun:test"
-import { Chunk, Effect, Fiber, Layer, Ref, Stream, TestClock } from "effect"
+import { Chunk, Effect, Layer, Ref, Stream, TestClock } from "effect"
 
 import { BunContext } from "@effect/platform-bun"
 import { it } from "../../bun-test-effect"
@@ -327,9 +327,12 @@ const frameMeanAbsoluteDifference = (left: Float32Array, right: Float32Array): n
 	return total / left.length
 }
 
-const decodeReferenceFrames = (bytes: Uint8Array, count: number) =>
+const decodeReferenceFrames = (bytes: Uint8Array, count: number, key: string) =>
 	Effect.gen(function* () {
-		const source = yield* AudioSource.fromEncodedAudioFileStream(Stream.make(bytes))
+		storageObjects.set(key, bytes)
+		const source = yield* AudioSource.fromStorageObject(key).pipe(
+			Effect.provideService(StorageService, yield* StorageService),
+		)
 		return yield* collectFrames(source.stream, count)
 	})
 
@@ -345,10 +348,9 @@ it.layer(testLayer)(({ scoped }) => {
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
 			const playoutManager = yield* PlayoutManager
-			const takeoverFiber = yield* playoutManager
+			yield* playoutManager
 				.takeover(radioId, spiedMultiplexer.service)
-				.pipe(Effect.fork)
-			yield* Effect.addFinalizer(() => Fiber.interrupt(takeoverFiber))
+				.pipe(Effect.forkScoped)
 
 			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 1)).toEqual([0])
 
@@ -371,10 +373,9 @@ it.layer(testLayer)(({ scoped }) => {
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
 			const playoutManager = yield* PlayoutManager
-			const takeoverFiber = yield* playoutManager
+			yield* playoutManager
 				.takeover(radioId, spiedMultiplexer.service)
-				.pipe(Effect.fork)
-			yield* Effect.addFinalizer(() => Fiber.interrupt(takeoverFiber))
+				.pipe(Effect.forkScoped)
 
 			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 1)).toEqual([0])
 
@@ -420,20 +421,24 @@ it.layer(testLayer)(({ scoped }) => {
 			storageObjects.set(`${radioId}/${mediaNodeIdB}`, secondTrackBytes)
 
 			const referenceFrameCount = crossfadeWarmFrames + comparisonFrameCount
-			const firstTrackReference = yield* decodeReferenceFrames(firstTrackBytes, referenceFrameCount)
+			const firstTrackReference = yield* decodeReferenceFrames(
+				firstTrackBytes,
+				referenceFrameCount,
+				"reference/track-a.wav",
+			)
 			const secondTrackReference = yield* decodeReferenceFrames(
 				secondTrackBytes,
 				referenceFrameCount,
+				"reference/track-b.wav",
 			)
 
 			const multiplexer = yield* AudioMultiplexer
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
 			const playoutManager = yield* PlayoutManager
-			const takeoverFiber = yield* playoutManager
+			yield* playoutManager
 				.takeover(radioId, spiedMultiplexer.service)
-				.pipe(Effect.fork)
-			yield* Effect.addFinalizer(() => Fiber.interrupt(takeoverFiber))
+				.pipe(Effect.forkScoped)
 
 			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 1)).toEqual([0])
 
