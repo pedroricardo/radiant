@@ -6,6 +6,7 @@
 	"bin": {
 		"radiant": "./src/index.ts"
 	},
+	"main": "src/index.ts",
 	"scripts": {
 		"radiant": "bun --env-file=../radiant-frontend/.env run ./src/index.ts",
 		"typecheck": "bunx tsc --noEmit -p tsconfig.json"
@@ -13,6 +14,7 @@
 	"dependencies": {
 		"@clack/prompts": "^1.4.0",
 		"@effect/cli": "^0.75.1",
+		"@effect/platform": "^0.94.5",
 		"@effect/platform-bun": "^0.89.0",
 		"@radiant/backend": "workspace:*",
 		"@radiant/client": "workspace:*",

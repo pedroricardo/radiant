@@ -1,13 +1,20 @@
 import type { Playout } from "@radiant/client/lib"
-import { Effect } from "effect"
+import { Effect, Either, Option, Runtime, Schema } from "effect"
+import * as DateTime from "effect/DateTime"
 
-import type { RadioRow } from "../radios/repository"
-import { fetchAudioNodes } from "../media-library/repository"
-import { promptAudioNode } from "../media-library/prompts"
-import { fetchPlaylists } from "../playlists/repository"
-import { promptPlaylist } from "../playlists/prompts"
 import * as Prompter from "../../shared/Prompter"
-import { parseIsoLocalDate, parseMinuteOfDay } from "../../shared/time"
+import {
+	formatLocalDate,
+	LocalDate,
+	OneOffStartInput,
+	parseMinuteOfDay,
+	zonedDateParts,
+} from "../../shared/time"
+import { promptAudioNode } from "../media-library/prompts"
+import { fetchAudioNodes } from "../media-library/repository"
+import { promptPlaylist } from "../playlists/prompts"
+import { fetchPlaylists } from "../playlists/repository"
+import type { RadioRow } from "../radios/repository"
 import type { BlockDraft, BlockKind, BlockTargetSelection } from "./types"
 
 const weekdayOptions = [
@@ -21,8 +28,8 @@ const weekdayOptions = [
 ] as const
 
 const blockKindOptions = [
-	{ value: "weekly", label: "Weekly block" },
 	{ value: "one-off", label: "One-off block" },
+	{ value: "weekly", label: "Weekly block" },
 ] as const
 
 const targetTypeOptions = [
@@ -40,19 +47,18 @@ const playlistFillModeOptions = [
 	{ value: "loop", label: "Loop" },
 ] as const
 
-const promptTarget = (
-	radio: RadioRow,
-	targetType: Playout.ScheduleTargetType,
-) =>
+const promptTarget = (radio: RadioRow, targetType: Playout.ScheduleTargetType) =>
 	Effect.gen(function* () {
 		if (targetType === "audio_file") {
 			const nodes = yield* fetchAudioNodes(radio.id)
 			const mediaNodeId = yield* promptAudioNode(radio, nodes)
+			const row = nodes.find((node) => node.media_nodes.id === mediaNodeId)!
 
 			return {
 				targetType,
 				mediaNodeId,
 				playlistId: null,
+				durationMs: row.media_node_audio_metadata.durationMs,
 			} as BlockTargetSelection
 		}
 
@@ -63,12 +69,19 @@ const promptTarget = (
 			targetType,
 			mediaNodeId: null,
 			playlistId,
+			durationMs: null,
 		} as BlockTargetSelection
 	})
 
 export const promptBlockDraft = (radio: RadioRow) =>
 	Effect.gen(function* () {
 		const prompter = yield* Prompter.Prompter
+		const runtime = yield* Effect.runtime()
+		const now = yield* DateTime.now
+		const zonedNow = DateTime.setZone(now, DateTime.zoneUnsafeMakeNamed(radio.timezone))
+		const today = formatLocalDate(zonedDateParts(zonedNow))
+		const runValidation = <A, E>(effect: Effect.Effect<A, E, never>) =>
+			Runtime.runSync(runtime)(effect)
 
 		yield* prompter.intro("Radiant playout block wizard")
 
@@ -112,24 +125,33 @@ export const promptBlockDraft = (radio: RadioRow) =>
 					parseMinuteOfDay(value ?? "") == null ? "Use HH:mm in 24-hour format." : undefined,
 			})
 
-			const endTime = yield* prompter.text({
-				message: "End time (HH:mm)",
-				placeholder: "15:00",
-				validate: (value) => {
-					const startMinute = parseMinuteOfDay(startTime)
-					const endMinute = parseMinuteOfDay(value ?? "")
+			const startMinuteOfDay = parseMinuteOfDay(startTime)!
+			const endMinuteOfDay =
+				target.targetType === "audio_file"
+					? (() => {
+							const durationMs = target.durationMs
+							const durationMinutes = Math.max(1, Math.ceil(durationMs / 60_000))
+							return (startMinuteOfDay + durationMinutes) % (24 * 60)
+						})()
+					: yield* prompter
+							.text({
+								message: "End time (HH:mm)",
+								placeholder: "15:00",
+								validate: (value) => {
+									const endMinute = parseMinuteOfDay(value ?? "")
 
-					if (endMinute == null) {
-						return "Use HH:mm in 24-hour format."
-					}
+									if (endMinute == null) {
+										return "Use HH:mm in 24-hour format."
+									}
 
-					if (startMinute != null && endMinute <= startMinute) {
-						return "End time must be after start time in this first CLI version."
-					}
+									if (endMinute <= startMinuteOfDay) {
+										return "End time must be after start time in this first CLI version."
+									}
 
-					return undefined
-				},
-			})
+									return undefined
+								},
+							})
+							.pipe(Effect.map((value) => parseMinuteOfDay(value)!))
 
 			return {
 				blockKind,
@@ -137,51 +159,90 @@ export const promptBlockDraft = (radio: RadioRow) =>
 				playbackMode,
 				playlistFillMode,
 				weekday,
-				startMinuteOfDay: parseMinuteOfDay(startTime)!,
-				endMinuteOfDay: parseMinuteOfDay(endTime)!,
+				startMinuteOfDay,
+				endMinuteOfDay,
 			} satisfies BlockDraft
 		}
 
 		const date = yield* prompter.text({
 			message: `Local date in ${radio.timezone} (YYYY-MM-DD)`,
 			placeholder: "2026-05-16",
+			initialValue: today,
 			validate: (value) =>
-				parseIsoLocalDate(value ?? "") == null ? "Use YYYY-MM-DD." : undefined,
+				runValidation(
+					Effect.gen(function* () {
+						if (!value) {
+							return undefined
+						}
+						const parsedDate = Schema.decodeUnknownOption(LocalDate)(value ?? "")
+						return Option.isNone(parsedDate) ? "Use YYYY-MM-DD." : undefined
+					}),
+				),
 		})
 
 		const startTime = yield* prompter.text({
-			message: "Start time (HH:mm)",
+			message: "Start time (HH:mm, +00:01, +1m, +30s)",
 			placeholder: "14:00",
 			validate: (value) =>
-				parseMinuteOfDay(value ?? "") == null ? "Use HH:mm in 24-hour format." : undefined,
+				runValidation(
+					Effect.gen(function* () {
+						const parsedStart = yield* Effect.either(
+							Schema.decodeUnknown(OneOffStartInput)({
+								timeZone: radio.timezone,
+								dateInput: date,
+								startInput: value ?? "",
+							}),
+						)
+
+						return Either.isLeft(parsedStart)
+							? "Use HH:mm or a relative offset like +00:01, +1m, +30s."
+							: undefined
+					}),
+				),
 		})
 
-		const endTime = yield* prompter.text({
-				message: "End time (HH:mm)",
-				placeholder: "15:00",
-				validate: (value) => {
-					const startMinute = parseMinuteOfDay(startTime)
-					const endMinute = parseMinuteOfDay(value ?? "")
+		const resolvedStart = runValidation(
+			Schema.decodeUnknown(OneOffStartInput)({
+				timeZone: radio.timezone,
+				dateInput: date,
+				startInput: startTime,
+			}),
+		)
 
-					if (endMinute == null) {
-						return "Use HH:mm in 24-hour format."
-					}
+		const endMinuteOfDay =
+			target.targetType === "audio_file"
+				? null
+				: yield* prompter
+						.text({
+							message: "End time (HH:mm)",
+							placeholder: "15:00",
+							validate: (value) => {
+								const endMinute = parseMinuteOfDay(value ?? "")
 
-					if (startMinute != null && endMinute <= startMinute) {
-						return "End time must be after start time on the same day in this first CLI version."
-					}
+								if (endMinute == null) {
+									return "Use HH:mm in 24-hour format."
+								}
 
-					return undefined
-				},
-			})
+								if (
+									formatLocalDate(resolvedStart.date) === date &&
+									endMinute <= resolvedStart.startMinuteOfDay
+								) {
+									return "End time must be after start time on the same day in this first CLI version."
+								}
+
+								return undefined
+							},
+						})
+						.pipe(Effect.map((value) => parseMinuteOfDay(value)!))
 
 		return {
 			blockKind,
 			target,
 			playbackMode,
 			playlistFillMode,
-			date: parseIsoLocalDate(date)!,
-			startMinuteOfDay: parseMinuteOfDay(startTime)!,
-			endMinuteOfDay: parseMinuteOfDay(endTime)!,
+			startsAt: resolvedStart.startsAt,
+			date: resolvedStart.date,
+			startMinuteOfDay: resolvedStart.startMinuteOfDay,
+			endMinuteOfDay,
 		} satisfies BlockDraft
 	})

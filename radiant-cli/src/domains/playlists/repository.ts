@@ -1,5 +1,5 @@
-import { Effect } from "effect"
 import { asc, eq } from "drizzle-orm"
+import { Effect } from "effect"
 
 import * as Drizzle from "@radiant/backend/services/Drizzle"
 import { playlists } from "@radiant/backend/services/Drizzle/schema/playlists"
@@ -14,7 +14,11 @@ export const fetchPlaylists = (radioId: Radio.RadioId) =>
 
 		return yield* Effect.tryPromise({
 			try: () =>
-				db.select().from(playlists).where(eq(playlists.radioId, radioId)).orderBy(asc(playlists.name)),
+				db
+					.select()
+					.from(playlists)
+					.where(eq(playlists.radioId, radioId))
+					.orderBy(asc(playlists.name)),
 			catch: (cause) => new FetchPlaylistsError({ radioId, cause }),
 		})
 	})

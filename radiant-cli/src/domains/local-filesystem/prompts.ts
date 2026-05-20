@@ -120,7 +120,9 @@ const listDirectoryChoices = (directoryPath: string) =>
 		return { directories, files } as const
 	})
 
-const browseDirectory = (directoryPath: string): Effect.Effect<
+const browseDirectory = (
+	directoryPath: string,
+): Effect.Effect<
 	SelectedLocalAudioFile,
 	| ReadLocalDirectoryError
 	| ReadLocalFileInfoError

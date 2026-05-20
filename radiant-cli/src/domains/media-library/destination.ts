@@ -1,8 +1,8 @@
 import { FileSystem } from "@effect/platform"
 import { Effect } from "effect"
 
-import type { Radio } from "@radiant/client/lib"
 import { MediaLibraryService } from "@radiant/backend/services/MediaLibraryService"
+import type { Radio } from "@radiant/client/lib"
 import type { MediaNode } from "@radiant/client/lib/MediaNode"
 import * as Prompter from "../../shared/Prompter"
 
@@ -19,6 +19,7 @@ const splitDestinationPath = (value: string): ReadonlyArray<string> =>
 		.filter((segment) => segment.length > 0)
 
 const validateDestinationPath = (value: string | undefined) => {
+	if (!value) return
 	const segments = splitDestinationPath(value ?? "")
 
 	if (segments.length === 0) {

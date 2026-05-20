@@ -1,10 +1,9 @@
 import { Effect } from "effect"
 
-import type { AudioNodeRow } from "./repository"
-import type { Radio } from "@radiant/client/lib"
-import type { MediaNode } from "@radiant/client/lib"
-import { NoAudioNodesForRadioError } from "./errors"
+import type { MediaNode, Radio } from "@radiant/client/lib"
 import * as Prompter from "../../shared/Prompter"
+import { NoAudioNodesForRadioError } from "./errors"
+import type { AudioNodeRow } from "./repository"
 
 const formatAudioNodeLabel = (row: AudioNodeRow) => {
 	const title = row.media_node_audio_metadata.title ?? row.media_nodes.name

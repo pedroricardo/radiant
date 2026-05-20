@@ -46,7 +46,7 @@ export interface ConfirmOptions {
 	readonly initialValue?: boolean | undefined
 }
 
-const asPrompt = <A>(promise: ()=> Promise<A | symbol>) =>
+const asPrompt = <A>(promise: () => Promise<A | symbol>) =>
 	Effect.gen(function* () {
 		const result = yield* Effect.tryPromise({
 			try: promise,
@@ -65,8 +65,12 @@ export class Prompter extends Context.Tag("Prompter")<
 	{
 		readonly intro: (message: string) => Effect.Effect<void>
 		readonly outro: (message: string) => Effect.Effect<void>
-		readonly select: <A>(options: SelectOptions<A>) => Effect.Effect<A, PromptCanceledError | PromptExecutionError>
-		readonly text: (options: TextOptions) => Effect.Effect<string, PromptCanceledError | PromptExecutionError>
+		readonly select: <A>(
+			options: SelectOptions<A>,
+		) => Effect.Effect<A, PromptCanceledError | PromptExecutionError>
+		readonly text: (
+			options: TextOptions,
+		) => Effect.Effect<string, PromptCanceledError | PromptExecutionError>
 		readonly confirm: (
 			options: ConfirmOptions,
 		) => Effect.Effect<boolean, PromptCanceledError | PromptExecutionError>
@@ -77,21 +81,24 @@ export const clack = Layer.succeed(Prompter, {
 	intro: (message) => Effect.sync(() => clackPrompts.intro(message)),
 	outro: (message) => Effect.sync(() => clackPrompts.outro(message)),
 	select: <A>(options: SelectOptions<A>) =>
-		asPrompt(
-			async () => clackPrompts.select<A>({
+		asPrompt(async () =>
+			clackPrompts.select<A>({
 				message: options.message,
-				options: options.options.map((option) => ({
-					value: option.value,
-					label: option.label,
-					hint: option.hint,
-					disabled: false
-				}) as clackPrompts.Option<A>),
+				options: options.options.map(
+					(option) =>
+						({
+							value: option.value,
+							label: option.label,
+							hint: option.hint,
+							disabled: false,
+						}) as clackPrompts.Option<A>,
+				),
 				initialValue: options.initialValue,
 			}),
 		),
 	text: (options: TextOptions) =>
-		asPrompt(
-			async() => clackPrompts.text({
+		asPrompt(async () =>
+			clackPrompts.text({
 				message: options.message,
 				placeholder: options.placeholder,
 				validate: options.validate,
@@ -99,8 +106,8 @@ export const clack = Layer.succeed(Prompter, {
 			}),
 		),
 	confirm: (options: ConfirmOptions) =>
-		asPrompt(
-			async() => clackPrompts.confirm({
+		asPrompt(async () =>
+			clackPrompts.confirm({
 				message: options.message,
 				initialValue: options.initialValue,
 			}),

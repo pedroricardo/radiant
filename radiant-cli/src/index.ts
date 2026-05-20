@@ -1,5 +1,5 @@
 import { Command } from "@effect/cli"
-import { BunContext, BunRuntime } from "@effect/platform-bun"
+import { BunContext, BunFileSystem, BunPath } from "@effect/platform-bun"
 import { Effect, Layer } from "effect"
 
 import * as Drizzle from "@radiant/backend/services/Drizzle"
@@ -15,14 +15,13 @@ import {
 } from "@radiant/client/lib/MediaLibrary"
 
 import { rootCommand } from "./cli"
-import { FetchAudioNodesError, NoAudioNodesForRadioError } from "./domains/media-library/errors"
 import {
 	InvalidLocalAudioFileError,
 	ReadLocalDirectoryError,
 	ReadLocalFileInfoError,
 } from "./domains/local-filesystem/errors"
+import { FetchAudioNodesError, NoAudioNodesForRadioError } from "./domains/media-library/errors"
 import { FetchPlaylistsError, NoPlaylistsForRadioError } from "./domains/playlists/errors"
-import { InsertOneOffBlockError, InsertWeeklyBlockError } from "./domains/playout/errors"
 import { FetchRadiosError, RadioSelectionNotFoundError } from "./domains/radios/errors"
 import * as Prompter from "./shared/Prompter"
 import { PromptCanceledError, PromptExecutionError } from "./shared/Prompter"
@@ -96,13 +95,13 @@ const logKnownCliError = (error: unknown) => {
 
 	return Effect.logFatal(error)
 }
-
-const program = run(process.argv).pipe(
-	Effect.catchAll(logKnownCliError),
-	Effect.provide(mediaLibraryLayer),
-	Effect.provide(Prompter.clack),
-	Effect.provide(clackLoggerLayer),
-	Effect.provide(BunContext.layer),
+const cliLayer = mediaLibraryLayer.pipe(
+	Layer.provideMerge(Prompter.clack),
+	Layer.provideMerge(clackLoggerLayer),
+	Layer.provideMerge(BunContext.layer),
+	Layer.provideMerge(BunFileSystem.layer),
+	Layer.provideMerge(BunPath.layer),
 )
+const program = run(process.argv).pipe(Effect.catchAll(logKnownCliError), Effect.provide(cliLayer))
 
 await Effect.runPromise(program)

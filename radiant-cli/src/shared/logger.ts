@@ -20,7 +20,9 @@ const renderMessagePart = (message: unknown): string => {
 }
 
 const renderAnnotations = (annotations: Logger.Logger.Options<unknown>["annotations"]): string => {
-	const rendered = Array.from(annotations).map(([key, value]) => `${key}=${renderMessagePart(value)}`)
+	const rendered = Array.from(annotations).map(
+		([key, value]) => `${key}=${renderMessagePart(value)}`,
+	)
 
 	return rendered.length > 0 ? ` {${rendered.join(" ")}}` : ""
 }

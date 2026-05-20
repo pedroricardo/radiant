@@ -1,14 +1,14 @@
-import * as DateTime from "effect/DateTime"
 import { Effect } from "effect"
+import * as DateTime from "effect/DateTime"
 
 import * as Drizzle from "@radiant/backend/services/Drizzle"
-import { MediaLibraryService } from "@radiant/backend/services/MediaLibraryService"
 import { scheduleOneOffBlocks } from "@radiant/backend/services/Drizzle/schema/scheduleOneOffBlocks"
 import { scheduleWeeklyBlocks } from "@radiant/backend/services/Drizzle/schema/scheduleWeeklyBlocks"
+import { MediaLibraryService } from "@radiant/backend/services/MediaLibraryService"
 import { Id, Playout } from "@radiant/client/lib"
 
-import type { RadioRow } from "../radios/repository"
 import { makeZonedDateTime } from "../../shared/time"
+import type { RadioRow } from "../radios/repository"
 import { InsertOneOffBlockError, InsertWeeklyBlockError } from "./errors"
 import type { BlockDraft } from "./types"
 
@@ -44,8 +44,11 @@ export const insertBlock = (radio: RadioRow, draft: BlockDraft) =>
 		}
 
 		const id = Id.random(Playout.scheduleOneOffBlockIdPrefix)
-		const startsAt = makeZonedDateTime(draft.date, draft.startMinuteOfDay, radio.timezone)
-		let endsAt = makeZonedDateTime(draft.date, draft.endMinuteOfDay, radio.timezone)
+		const startsAt = draft.startsAt
+		let endsAt =
+			draft.endMinuteOfDay == null
+				? startsAt
+				: makeZonedDateTime(draft.date, draft.endMinuteOfDay, radio.timezone)
 
 		if (draft.target.targetType === "audio_file") {
 			const node = yield* mediaLibrary.getNode({
@@ -65,8 +68,8 @@ export const insertBlock = (radio: RadioRow, draft: BlockDraft) =>
 		const values: typeof scheduleOneOffBlocks.$inferInsert = {
 			id,
 			radioId: radio.id,
-			startsAt: DateTime.formatIsoOffset(startsAt),
-			endsAt: DateTime.formatIsoOffset(endsAt),
+			startsAt: DateTime.toDateUtc(startsAt).toISOString(),
+			endsAt: DateTime.toDateUtc(endsAt).toISOString(),
 			targetType: draft.target.targetType,
 			playlistId: draft.target.playlistId ?? null,
 			mediaNodeId: draft.target.mediaNodeId ?? null,

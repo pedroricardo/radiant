@@ -1,8 +1,8 @@
 import { Effect } from "effect"
 
-import type { RadioRow } from "./repository"
-import { RadioSelectionNotFoundError } from "./errors"
 import * as Prompter from "../../shared/Prompter"
+import { RadioSelectionNotFoundError } from "./errors"
+import type { RadioRow } from "./repository"
 
 const formatRadioLabel = (radio: RadioRow) => `${radio.id}: ${radio.name} (${radio.timezone})`
 

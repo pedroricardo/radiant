@@ -1,5 +1,5 @@
-import { Effect } from "effect"
 import { and, asc, eq } from "drizzle-orm"
+import { Effect } from "effect"
 
 import * as Drizzle from "@radiant/backend/services/Drizzle"
 import { mediaNodeAudioMetadata } from "@radiant/backend/services/Drizzle/schema/mediaNodeAudioMetadata"
@@ -21,10 +21,7 @@ export const fetchAudioNodes = (radioId: Radio.RadioId) =>
 				db
 					.select()
 					.from(mediaNodes)
-					.innerJoin(
-						mediaNodeAudioMetadata,
-						eq(mediaNodeAudioMetadata.mediaNodeId, mediaNodes.id),
-					)
+					.innerJoin(mediaNodeAudioMetadata, eq(mediaNodeAudioMetadata.mediaNodeId, mediaNodes.id))
 					.where(and(eq(mediaNodes.radioId, radioId), eq(mediaNodes.kind, "audio_file")))
 					.orderBy(asc(mediaNodes.name)),
 			catch: (cause) => new FetchAudioNodesError({ radioId, cause }),

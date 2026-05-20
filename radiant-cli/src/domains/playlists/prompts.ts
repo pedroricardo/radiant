@@ -1,10 +1,9 @@
 import { Effect } from "effect"
 
-import type { PlaylistRow } from "./repository"
-import type { Radio } from "@radiant/client/lib"
-import type { Playlist } from "@radiant/client/lib"
-import { NoPlaylistsForRadioError } from "./errors"
+import type { Playlist, Radio } from "@radiant/client/lib"
 import * as Prompter from "../../shared/Prompter"
+import { NoPlaylistsForRadioError } from "./errors"
+import type { PlaylistRow } from "./repository"
 
 export const promptPlaylist = (
 	radio: { id: Radio.RadioId; name: string },

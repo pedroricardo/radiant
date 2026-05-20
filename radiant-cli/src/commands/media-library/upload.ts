@@ -1,10 +1,10 @@
 import { Command } from "@effect/cli"
 import { Effect } from "effect"
 
-import { fetchRadios } from "../../domains/radios/repository"
-import { promptRadio } from "../../domains/radios/prompts"
 import { promptLocalAudioFile } from "../../domains/local-filesystem/prompts"
 import { uploadLocalFileToMediaLibrary } from "../../domains/media-library/destination"
+import { promptRadio } from "../../domains/radios/prompts"
+import { fetchRadios } from "../../domains/radios/repository"
 
 export const uploadAudioFileProgram = Effect.gen(function* () {
 	const radios = yield* fetchRadios

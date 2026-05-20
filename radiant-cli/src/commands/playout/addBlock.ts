@@ -1,10 +1,10 @@
 import { Command } from "@effect/cli"
 import { Effect } from "effect"
 
-import { fetchRadios } from "../../domains/radios/repository"
-import { promptRadio } from "../../domains/radios/prompts"
 import { promptBlockDraft } from "../../domains/playout/prompts"
 import { insertBlock } from "../../domains/playout/repository"
+import { promptRadio } from "../../domains/radios/prompts"
+import { fetchRadios } from "../../domains/radios/repository"
 import * as Prompter from "../../shared/Prompter"
 
 export const addBlockProgram = Effect.gen(function* () {
