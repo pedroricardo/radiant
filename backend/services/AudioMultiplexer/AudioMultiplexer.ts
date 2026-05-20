@@ -1,6 +1,7 @@
 import { Chunk, Duration, Effect, Metric, Queue, Ref, Scope, Stream } from "effect"
 import * as AudioSource from "../../lib/AudioSource"
 import * as PCM from "../../lib/PCM"
+import { radioMultiplexerSetClusterTotal } from "../RadioManager/metrics"
 import {
 	DEFAULT_CHANNELS,
 	DEFAULT_CROSSFADE_DURATION,
@@ -14,7 +15,6 @@ import {
 	MultiplexerInvalidMasterVolumeError,
 } from "./Error"
 import * as internal from "./internal"
-import { radioMultiplexerSetClusterTotal } from "../RadioManager/metrics"
 import {
 	createRuntimeCluster,
 	crossfadeSamples,

@@ -1,11 +1,23 @@
 import { describe, expect } from "bun:test"
-import { Chunk, Effect, Fiber, Layer, Ref, Stream, TestClock } from "effect"
+import {
+	Chunk,
+	DateTime,
+	Effect,
+	Fiber,
+	Layer,
+	Metric,
+	Option,
+	Ref,
+	Stream,
+	TestClock,
+} from "effect"
+import { it } from "../../bun-test-effect"
 import type { Radio } from "../../lib"
 import * as AudioSource from "../../lib/AudioSource"
+import { AudioMultiplexer } from "../AudioMultiplexer"
 import { IcyEncoder as IcyEncoderService } from "../IcyEncoder"
 import { PlayoutManager } from "../PlayoutManager"
-import { it } from "../../bun-test-effect"
-import { AudioMultiplexer } from "../AudioMultiplexer"
+import { radioListenerConnectionsActive, radioMetric } from "./metrics"
 import { RadioManagerConfig } from "./RadioManagerConfig"
 import * as RadioStream from "./RadioStream"
 
@@ -98,7 +110,6 @@ const makeSequentialFakeMultiplexer = () =>
 		})
 	})
 
-
 const syncMultiplexerToRealAudio = (multiplexer: typeof AudioMultiplexer.Service) =>
 	multiplexer.setCluster([
 		{
@@ -118,24 +129,20 @@ const encodeFrameMarker = (value: number): Uint8Array => {
 	return bytes
 }
 
-const decodeFrameMarker = (chunk: Uint8Array): number => new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength).getUint32(0)
+const decodeFrameMarker = (chunk: Uint8Array): number =>
+	new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength).getUint32(0)
 
 const makeFakeIcyEncoderLayer = () =>
 	Layer.succeed(
 		IcyEncoderService,
 		IcyEncoderService.make({
-			encode: (
-				source,
-				options,
-			) =>
+			encode: (source, options) =>
 				Effect.succeed({
 					metaInterval: options.metaInterval ?? 16_000,
 					metadataTitle: options.metadataTitle ?? "Radiant FM",
 					kbps: options.kbps,
 					channels: source.channels,
-					stream: source.stream.pipe(
-						Stream.map((frame) => encodeFrameMarker(firstSample(frame))),
-					),
+					stream: source.stream.pipe(Stream.map((frame) => encodeFrameMarker(firstSample(frame)))),
 				}),
 		}),
 	)
@@ -233,6 +240,42 @@ describe("RadioStream", () => {
 		}),
 	)
 
+	it.scoped(
+		"interrupting cloneStream releases the subscriber and decrements active listeners",
+		() =>
+			Effect.gen(function* () {
+				const radioId = "radio_1" as Radio.RadioId
+				const multiplexer = yield* makeSequentialFakeMultiplexer()
+				const runtime = yield* RadioStream.makeRuntime(multiplexer, { radioId })
+
+				const encoded = yield* RadioStream.cloneStream(
+					{
+						radioId,
+						multiplexer,
+						runtime,
+						playoutManagerFiber: undefined as never,
+					} as never,
+					{ kbps: 128 },
+				).pipe(Effect.provide(makeFakeIcyEncoderLayer()))
+
+				const streamFiber = yield* Effect.fork(Stream.runDrain(Stream.take(encoded.stream, 10_000)))
+
+				yield* TestClock.adjust(FRAME_DURATION_MS * 2)
+
+				const activeBeforeInterrupt = yield* Metric.value(
+					radioMetric(radioListenerConnectionsActive, radioId),
+				)
+				expect(activeBeforeInterrupt.value).toBe(1)
+
+				yield* Fiber.interrupt(streamFiber)
+
+				const activeAfterInterrupt = yield* Metric.value(
+					radioMetric(radioListenerConnectionsActive, radioId),
+				)
+				expect(activeAfterInterrupt.value).toBe(0)
+			}),
+	)
+
 	it.scoped("startRadio syncs the playout exactly once during bootstrap", () =>
 		Effect.gen(function* () {
 			const frameValueRef = yield* Ref.make(0)
@@ -248,7 +291,9 @@ describe("RadioStream", () => {
 							PlayoutManager,
 							PlayoutManager.make({
 								syncNow: (_radioId, multiplexer) =>
-									syncMultiplexerToRealAudio(multiplexer),
+									syncMultiplexerToRealAudio(multiplexer).pipe(
+										Effect.as(Option.none<DateTime.Zoned>()),
+									),
 								takeover: (_radioId, multiplexer, options) =>
 									Ref.update(syncCallsRef, (count) => count + 1).pipe(
 										Effect.zipRight(syncMultiplexerToRealAudio(multiplexer)),

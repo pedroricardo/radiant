@@ -18,9 +18,7 @@ export const MediaNode = Schema.Struct({
 	name: Schema.NonEmptyString,
 	storageKey: Schema.NullOr(Schema.String),
 	mimeType: Schema.NullOr(Schema.String),
-	sizeBytes: Schema.NullOr(
-		Schema.NonNegativeBigInt,
-	),
+	sizeBytes: Schema.NullOr(Schema.NonNegativeBigInt),
 	durationMs: Schema.NullOr(Schema.Int),
 	containerFormat: Schema.NullOr(Schema.String),
 	audioCodec: Schema.NullOr(Schema.String),

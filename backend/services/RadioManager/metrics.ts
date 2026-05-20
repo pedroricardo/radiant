@@ -25,10 +25,13 @@ export const radioPlayoutSyncsTotal = Metric.counter("radio_playout_syncs_total"
 	incremental: true,
 })
 
-export const radioMultiplexerSetClusterTotal = Metric.counter("radio_multiplexer_set_cluster_total", {
-	description: "Number of cluster changes applied to radio multiplexers",
-	incremental: true,
-})
+export const radioMultiplexerSetClusterTotal = Metric.counter(
+	"radio_multiplexer_set_cluster_total",
+	{
+		description: "Number of cluster changes applied to radio multiplexers",
+		incremental: true,
+	},
+)
 
 export const radioMetric = <Type, In, Out>(
 	metric: Metric.Metric<Type, In, Out>,

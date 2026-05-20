@@ -10,7 +10,7 @@ export const oauthAccounts = pgTable(
 			.references(() => users.id, { onDelete: "cascade" }),
 		provider: text().notNull(),
 		providerAccountId: text().notNull(),
-		createdAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
+		createdAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
 	},
 	(oauthAccounts) => [
 		primaryKey({

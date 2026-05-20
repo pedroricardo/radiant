@@ -45,7 +45,14 @@ export class UserRepository extends Effect.Service<UserRepository>()("UserReposi
 							}),
 					})
 
-					return yield* Schema.decode(Schema.OptionFromUndefinedOr(Schema.Struct({...User.User.fields, storageQuotaBytes: Schema.NullOr(Schema.BigIntFromSelf)})))(rows[0]).pipe(
+					return yield* Schema.decode(
+						Schema.OptionFromUndefinedOr(
+							Schema.Struct({
+								...User.User.fields,
+								storageQuotaBytes: Schema.NullOr(Schema.BigIntFromSelf),
+							}),
+						),
+					)(rows[0]).pipe(
 						Effect.mapError(
 							(e) =>
 								new UserRepositoryError({

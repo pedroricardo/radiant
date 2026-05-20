@@ -22,8 +22,8 @@ export const mediaNodes = pgTable(
 			.$type<MediaNode.MediaNodeKind>()
 			.notNull(),
 		name: varchar().notNull(),
-		createdAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
-		updatedAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
+		createdAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
+		updatedAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
 	},
 	(mediaNodes) => [
 		uniqueIndex("media_nodes_radio_parent_name_index").on(

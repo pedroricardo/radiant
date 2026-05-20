@@ -1,9 +1,9 @@
+import { Chunk, Duration, Effect, Either, Fiber, Option, Ref, Stream } from "effect"
 import {
 	DEFAULT_CHANNELS,
 	DEFAULT_FRAME_SAMPLES,
 	DEFAULT_SAMPLE_RATE,
 } from "../../services/AudioMultiplexer/constants"
-import { Chunk, Duration, Effect, Fiber, Option, Stream } from "effect"
 
 import { AudioSource, AudioSourceConfigurationError, concatUint8Arrays } from "."
 import * as PCM from "../PCM"
@@ -45,6 +45,8 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 		channels,
 		stream: Stream.unwrapScoped(
 			Effect.gen(function* () {
+				const stderrTailLimit = 8_000
+				const readTimeout = "5 seconds"
 				const seekArgs = seekMs > 0 ? ["-ss", String(seekMs / 1_000)] : []
 				yield* Effect.logInfo("audio_source.decode.spawn_ffmpeg").pipe(
 					Effect.annotateLogs({
@@ -105,6 +107,9 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 				}
 
 				const writer = process.stdin
+				const stderrRef = yield* Ref.make("")
+				const appendStderr = (text: string) =>
+					Ref.update(stderrRef, (current) => (current + text).slice(-stderrTailLimit))
 
 				const stdinFiber = yield* Effect.forkScoped(
 					input.pipe(
@@ -133,10 +138,19 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 				)
 
 				const stderrFiber = yield* Effect.forkScoped(
-					Effect.promise(() => new Response(process.stderr).text()).pipe(
+					Stream.fromReadableStream(
+						() => process.stderr!,
+						(cause) =>
+							new AudioSourceConfigurationError({
+								message: `failed to read ffmpeg stderr for encoded audio file stream: ${String(cause)}`,
+							}),
+					).pipe(
+						Stream.runForEach((chunk) =>
+							appendStderr(new TextDecoder().decode(chunk, { stream: true })),
+						),
 						Effect.catchAll((cause) =>
-							Effect.succeed(
-								`failed to read ffmpeg stderr for encoded audio file stream: ${String(cause)}`,
+							appendStderr(
+								`\nfailed to read ffmpeg stderr for encoded audio file stream: ${String(cause)}`,
 							),
 						),
 					),
@@ -172,18 +186,34 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 							return Chunk.of(frame)
 						}
 
-						const nextChunk = yield* Effect.either(bytePull)
+						const nextChunk = yield* Effect.either(bytePull).pipe(Effect.timeoutOption(readTimeout))
 
-						if (nextChunk._tag === "Right") {
-							for (const bytes of Chunk.toReadonlyArray(nextChunk.right)) {
+						if (Option.isNone(nextChunk)) {
+							const stderr = yield* Ref.get(stderrRef)
+							yield* Effect.logWarning("audio_source.decode.ffmpeg_stdout_timeout").pipe(
+								Effect.annotateLogs({ seekMs, readTimeout, stderr }),
+							)
+							return yield* Effect.fail(
+								Option.some(
+									new AudioSourceConfigurationError({
+										message:
+											`ffmpeg stopped producing audio data for encoded audio file stream after ${readTimeout}` +
+											(stderr.length > 0 ? `: ${stderr}` : ""),
+									}),
+								),
+							)
+						}
+
+						if (Either.isRight(nextChunk.value)) {
+							for (const bytes of Chunk.toReadonlyArray(nextChunk.value.right)) {
 								pendingBytes = concatUint8Arrays(pendingBytes, bytes)
 							}
 
 							continue
 						}
 
-						if (Option.isSome(nextChunk.left)) {
-							return yield* Effect.fail(Option.some(nextChunk.left.value))
+						if (Option.isSome(nextChunk.value.left)) {
+							return yield* Effect.fail(Option.some(nextChunk.value.left.value))
 						}
 
 						const stdinResult = yield* Fiber.join(stdinFiber).pipe(Effect.either)
@@ -208,24 +238,20 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 							),
 						)
 
-						const stderr = yield* Fiber.join(stderrFiber).pipe(
-							Effect.mapError((cause) =>
-								Option.some(
-									new AudioSourceConfigurationError({
-										message: `failed collecting ffmpeg stderr for encoded audio file stream: ${String(cause)}`,
-									}),
-								),
-							),
-						)
+						yield* Fiber.await(stderrFiber).pipe(Effect.ignoreLogged)
+
+						const finalStderr = yield* Ref.get(stderrRef)
 
 						if (exitCode !== 0) {
 							yield* Effect.logWarning("audio_source.decode.ffmpeg_failed").pipe(
-								Effect.annotateLogs({ exitCode, seekMs, stderr }),
+								Effect.annotateLogs({ exitCode, seekMs, stderr: finalStderr }),
 							)
 							return yield* Effect.fail(
 								Option.some(
 									new AudioSourceConfigurationError({
-										message: `ffmpeg failed to decode encoded audio file stream: ${stderr}`,
+										message:
+											`ffmpeg failed to decode encoded audio file stream (exit ${exitCode})` +
+											(finalStderr.length > 0 ? `: ${finalStderr}` : ""),
 									}),
 								),
 							)
@@ -234,7 +260,7 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 						if (pendingBytes.length === 0) {
 							if (!emittedAnyFrame) {
 								yield* Effect.logWarning("audio_source.decode.empty_stream_emits_silence").pipe(
-									Effect.annotateLogs({ seekMs }),
+									Effect.annotateLogs({ seekMs, finalStderr }),
 								)
 								emittedAnyFrame = true
 								return Chunk.of(PCM.emptyFrame(DEFAULT_FRAME_SAMPLES, channels))
@@ -261,8 +287,8 @@ export const fromEncodedAudioFileStream = Effect.fn("fromEncodedAudioFileStream"
 					}
 				})
 
-					return Stream.repeatEffectChunkOption(pullFrames)
-				}),
-			),
-		})
+				return Stream.repeatEffectChunkOption(pullFrames)
+			}),
+		),
+	})
 })

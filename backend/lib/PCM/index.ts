@@ -177,10 +177,7 @@ export const withVolume = Function.dual<
  * This is safer than direct summation because it reduces clipping risk when
  * several sources are active at the same time.
  */
-export const averageFrames = (
-	frames: ReadonlyArray<PCMFrame>,
-	frameLength: number,
-): PCMFrame => {
+export const averageFrames = (frames: ReadonlyArray<PCMFrame>, frameLength: number): PCMFrame => {
 	if (frames.length === 0) {
 		return new Float32Array(frameLength)
 	}
@@ -208,11 +205,7 @@ export const averageFrames = (
  * - `t = 0` => only `from`
  * - `t = 1` => only `to`
  */
-export const crossfadeFrames = (
-	from: PCMFrame,
-	to: PCMFrame,
-	t: number,
-): PCMFrame => {
+export const crossfadeFrames = (from: PCMFrame, to: PCMFrame, t: number): PCMFrame => {
 	const length = Math.min(from.length, to.length)
 	const out = new Float32Array(length)
 	const fromGain = 1 - t

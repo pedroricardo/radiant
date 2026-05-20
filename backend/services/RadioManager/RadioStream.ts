@@ -1,4 +1,19 @@
-import { Clock, Data, Duration, Effect, Fiber, Layer, Metric, Queue, Ref, Scope, Stream } from "effect"
+import {
+	Cause,
+	Clock,
+	Data,
+	Duration,
+	Effect,
+	Exit,
+	Fiber,
+	Layer,
+	Metric,
+	Option,
+	Queue,
+	Ref,
+	Scope,
+	Stream,
+} from "effect"
 import type { Radio } from "../../lib"
 import * as AudioSource from "../../lib/AudioSource"
 import * as AudioMultiplexer from "../AudioMultiplexer"
@@ -12,8 +27,7 @@ import {
 	radioStartsTotal,
 	radioStreamClonesTotal,
 } from "./metrics"
-type RadioStreamError =
-	| Effect.Effect.Error<ReturnType<typeof PlayoutManager.Service.takeover>>
+type RadioStreamError = Effect.Effect.Error<ReturnType<typeof PlayoutManager.Service.takeover>>
 type RadioStreamSubscriberId = number
 
 type RadioStreamRuntime = {
@@ -261,6 +275,9 @@ const makeRuntime = (
 					Effect.annotateLogs({ radioId: options.radioId ?? null }),
 				)
 				yield* options.waitUntilReady
+				yield* Effect.logDebug("radio_stream.playout_ready_released").pipe(
+					Effect.annotateLogs({ radioId: options.radioId ?? null }),
+				)
 			}
 			const startedAt = yield* Clock.currentTimeMillis
 			const framesProducedRef = yield* Ref.make(0)
@@ -305,7 +322,23 @@ const makeRuntime = (
 					}),
 				),
 			)
-		})
+		}).pipe(
+			Effect.onExit((exit) =>
+				Effect.logDebug("radio_stream.producer_exit").pipe(
+					Effect.annotateLogs({
+						radioId: options?.radioId ?? null,
+						exit: String(
+							Exit.causeOption(exit).pipe(
+								Option.match({
+									onSome: Cause.pretty,
+									onNone: () => "Success",
+								}),
+							),
+						),
+					}),
+				),
+			),
+		)
 
 		yield* Effect.forkScoped(producer)
 
@@ -411,18 +444,16 @@ const startRadio = Effect.fn("RadioStream.startRadio")(function* (radioId: Radio
 	const runtime = yield* makeRuntime(multiplexer, {
 		radioId,
 		waitUntilReady: playoutReady.await,
-	}).pipe(
-		Effect.provideService(Scope.Scope, scope),
-	)
+	}).pipe(Effect.provideService(Scope.Scope, scope))
 	// Fibra que mantém o Playout Manager a correr (alimentando o multiplexer)
 	const playoutManagerFiber = yield* playoutManager
 		.takeover(radioId, multiplexer, {
 			readyLatch: playoutReady,
 		})
 		.pipe(
-		Effect.tapErrorCause(Effect.logFatal),
-		Effect.onExit((e) => Scope.close(scope, e)),
-		Effect.forkDaemon,
+			Effect.tapErrorCause(Effect.logFatal),
+			Effect.onExit((e) => Scope.close(scope, e)),
+			Effect.forkDaemon,
 		)
 	yield* Effect.logInfo("radio_stream.started").pipe(
 		Effect.annotateLogs({

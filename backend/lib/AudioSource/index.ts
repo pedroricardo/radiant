@@ -1,6 +1,6 @@
 import { FileSystem } from "@effect/platform"
 import { AudioSourceConfigurationError } from "@radiant/client/lib/AudioSourceErrors"
-import { Chunk, Data, Duration, Effect, Fiber, Function, Option, Stream } from "effect"
+import { Chunk, Data, Duration, Effect, Either, Fiber, Function, Option, Ref, Stream } from "effect"
 
 import {
 	DEFAULT_CHANNELS,
@@ -18,6 +18,7 @@ type ValidSampleRate<T extends number> = number extends T
 		: T
 
 export * from "@radiant/client/lib/AudioSourceErrors"
+export * from "./decoding"
 
 export const validateConfig = PCM.validateConfig
 
@@ -50,7 +51,6 @@ export class AudioSource<
 	readonly stream: Stream.Stream<Float32Array, E, R>
 }> {}
 
-
 export const fromPCM = <const SampleRate extends number>(
 	pcm: Float32Array[],
 	sampleRate: SampleRate,
@@ -81,57 +81,39 @@ export const fromLiveStream = <const SampleRate extends number, E, R>(
 		})
 	})
 
-
 export const mapStream: {
-  <
-    const SampleRate extends number,
-    E,
-    R,
-    E2,
-    R2
-  >(
-    fn: (
-      stream: Stream.Stream<Float32Array<ArrayBufferLike>, E, R>
-    ) => Stream.Stream<Float32Array<ArrayBufferLike>, E | E2, R | R2>
-  ): (
-    self: AudioSource<SampleRate, E, R>
-  ) => AudioSource<SampleRate, E | E2, R | R2>
+	<const SampleRate extends number, E, R, E2, R2>(
+		fn: (
+			stream: Stream.Stream<Float32Array<ArrayBufferLike>, E, R>,
+		) => Stream.Stream<Float32Array<ArrayBufferLike>, E | E2, R | R2>,
+	): (self: AudioSource<SampleRate, E, R>) => AudioSource<SampleRate, E | E2, R | R2>
 
-  <
-    const SampleRate extends number,
-    E,
-    R,
-    E2,
-    R2
-  >(
-    self: AudioSource<SampleRate, E, R>,
-    fn: (
-      stream: Stream.Stream<Float32Array<ArrayBufferLike>, E, R>
-    ) => Stream.Stream<Float32Array<ArrayBufferLike>, E | E2, R | R2>
-  ): AudioSource<SampleRate, E | E2, R | R2>
+	<const SampleRate extends number, E, R, E2, R2>(
+		self: AudioSource<SampleRate, E, R>,
+		fn: (
+			stream: Stream.Stream<Float32Array<ArrayBufferLike>, E, R>,
+		) => Stream.Stream<Float32Array<ArrayBufferLike>, E | E2, R | R2>,
+	): AudioSource<SampleRate, E | E2, R | R2>
 } = Function.dual(
-  2,
-  <
-    const SampleRate extends number,
-    E,
-    R,
-    E2,
-    R2
-  >(
-    self: AudioSource<SampleRate, E, R>,
-    fn: (
-      stream: Stream.Stream<Float32Array<ArrayBufferLike>, E, R>
-    ) => Stream.Stream<Float32Array<ArrayBufferLike>, E | E2, R | R2>
-  ) => new AudioSource({
-        ...self,
-        stream: fn(self.stream)
-      })
-	)
+	2,
+	<const SampleRate extends number, E, R, E2, R2>(
+		self: AudioSource<SampleRate, E, R>,
+		fn: (
+			stream: Stream.Stream<Float32Array<ArrayBufferLike>, E, R>,
+		) => Stream.Stream<Float32Array<ArrayBufferLike>, E | E2, R | R2>,
+	) =>
+		new AudioSource({
+			...self,
+			stream: fn(self.stream),
+		}),
+)
 
-export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string,
+export const fromAudioFile = Effect.fn("fromAudioFile")(function* (
+	path: string,
 	options?: {
 		readonly seek?: Duration.DurationInput
-	},) {
+	},
+) {
 	const fs = yield* FileSystem.FileSystem
 
 	const sampleRate = DEFAULT_SAMPLE_RATE
@@ -164,6 +146,8 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string,
 		channels,
 		stream: Stream.unwrapScoped(
 			Effect.gen(function* () {
+				const stderrTailLimit = 8_000
+				const readTimeout = "5 seconds"
 				const seekArgs = seekMs > 0 ? ["-ss", String(seekMs / 1_000)] : []
 				const process = yield* Effect.try({
 					try: () =>
@@ -206,10 +190,23 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string,
 					)
 				}
 
+				const stderrRef = yield* Ref.make("")
+				const appendStderr = (text: string) =>
+					Ref.update(stderrRef, (current) => (current + text).slice(-stderrTailLimit))
+
 				const stderrFiber = yield* Effect.forkScoped(
-					Effect.promise(() => new Response(process.stderr).text()).pipe(
+					Stream.fromReadableStream(
+						() => process.stderr!,
+						(cause) =>
+							new AudioSourceConfigurationError({
+								message: `failed to read ffmpeg stderr for path: ${path}: ${String(cause)}`,
+							}),
+					).pipe(
+						Stream.runForEach((chunk) =>
+							appendStderr(new TextDecoder().decode(chunk, { stream: true })),
+						),
 						Effect.catchAll((cause) =>
-							Effect.succeed(`failed to read ffmpeg stderr for ${path}: ${String(cause)}`),
+							appendStderr(`\nfailed to read ffmpeg stderr for ${path}: ${String(cause)}`),
 						),
 					),
 				)
@@ -244,18 +241,34 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string,
 							return Chunk.of(frame)
 						}
 
-						const nextChunk = yield* Effect.either(bytePull)
+						const nextChunk = yield* Effect.either(bytePull).pipe(Effect.timeoutOption(readTimeout))
 
-						if (nextChunk._tag === "Right") {
-							for (const bytes of Chunk.toReadonlyArray(nextChunk.right)) {
+						if (Option.isNone(nextChunk)) {
+							const stderr = yield* Ref.get(stderrRef)
+							yield* Effect.logWarning("audio_source.file.ffmpeg_stdout_timeout").pipe(
+								Effect.annotateLogs({ path, seekMs, readTimeout, stderr }),
+							)
+							return yield* Effect.fail(
+								Option.some(
+									new AudioSourceConfigurationError({
+										message:
+											`ffmpeg stopped producing audio data for path: ${path} after ${readTimeout}` +
+											(stderr.length > 0 ? `: ${stderr}` : ""),
+									}),
+								),
+							)
+						}
+
+						if (Either.isRight(nextChunk.value)) {
+							for (const bytes of Chunk.toReadonlyArray(nextChunk.value.right)) {
 								pendingBytes = concatUint8Arrays(pendingBytes, bytes)
 							}
 
 							continue
 						}
 
-						if (Option.isSome(nextChunk.left)) {
-							return yield* Effect.fail(Option.some(nextChunk.left.value))
+						if (Option.isSome(nextChunk.value.left)) {
+							return yield* Effect.fail(Option.some(nextChunk.value.left.value))
 						}
 
 						const exitCode = yield* Effect.promise(() => process.exited).pipe(
@@ -268,21 +281,19 @@ export const fromAudioFile = Effect.fn("fromAudioFile")(function* (path: string,
 							),
 						)
 
-						const stderr = yield* Fiber.join(stderrFiber).pipe(
-							Effect.mapError((cause) =>
-								Option.some(
-									new AudioSourceConfigurationError({
-										message: `failed collecting ffmpeg stderr for path: ${path}: ${String(cause)}`,
-									}),
-								),
-							),
-						)
+						yield* Fiber.await(stderrFiber).pipe(Effect.ignoreLogged)
+						const stderr = yield* Ref.get(stderrRef)
 
 						if (exitCode !== 0) {
+							yield* Effect.logWarning("audio_source.file.ffmpeg_failed").pipe(
+								Effect.annotateLogs({ path, exitCode, seekMs, stderr }),
+							)
 							return yield* Effect.fail(
 								Option.some(
 									new AudioSourceConfigurationError({
-										message: `ffmpeg failed to decode audio file: ${path}: ${stderr}`,
+										message:
+											`ffmpeg failed to decode audio file: ${path} (exit ${exitCode})` +
+											(stderr.length > 0 ? `: ${stderr}` : ""),
 									}),
 								),
 							)
@@ -422,11 +433,10 @@ export const resampleTo = Function.dual<
 export const empty = new AudioSource({
 	channels: 2,
 	sampleRate: DEFAULT_SAMPLE_RATE,
-	stream: Stream.empty
+	stream: Stream.empty,
 })
 export const silence = new AudioSource({
 	channels: 2,
 	sampleRate: DEFAULT_SAMPLE_RATE,
-	stream: Stream.repeatValue(new Float32Array(new Array(DEFAULT_FRAME_SAMPLES).fill(0)))
+	stream: Stream.repeatValue(new Float32Array(new Array(DEFAULT_FRAME_SAMPLES).fill(0))),
 })
-export * from "./decoding"

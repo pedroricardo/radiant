@@ -9,9 +9,7 @@ export const User = Schema.Struct({
 	username: Schema.String,
 	email: Schema.String,
 	avatarUrl: Schema.String,
-	storageQuotaBytes: Schema.NullOr(
-		Schema.NonNegativeBigInt
-	),
+	storageQuotaBytes: Schema.NullOr(Schema.NonNegativeBigInt),
 	createdAt: Schema.DateTimeUtc,
 })
 

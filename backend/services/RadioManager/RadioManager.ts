@@ -22,9 +22,7 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 
 		const getStream = Effect.fn("RadioManager.getStream")(
 			function* (radioId: Radio.RadioId) {
-				yield* Effect.logInfo("radio_manager.get_stream").pipe(
-					Effect.annotateLogs({ radioId }),
-				)
+				yield* Effect.logInfo("radio_manager.get_stream").pipe(Effect.annotateLogs({ radioId }))
 				const radio = yield* radioRepo.getRadioInfo(radioId)
 				const radioStream = yield* radiosCache.get(radioId)
 

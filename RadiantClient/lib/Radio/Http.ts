@@ -1,10 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 import { RadioDescription, RadioId, RadioInfo, RadioName, RadioTimezone } from "."
-import * as AudioMultiplexerErrors from "../AudioMultiplexerErrors"
-import * as AudioSourceErrors from "../AudioSourceErrors"
 import { Authorization } from "../Auth"
-import * as IcyEncoderErrors from "../IcyEncoderErrors"
 import * as Errors from "./errors"
 
 const RadioIdParam = HttpApiSchema.param("radioId", RadioId)

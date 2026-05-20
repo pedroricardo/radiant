@@ -12,7 +12,8 @@ export const layer = Layer.scoped(
 		Effect.acquireRelease(
 			Effect.promise(async () => {
 				const { drizzle } = await import("drizzle-orm/bun-sql") // This prevents next build from tripping up on trying to import from "bun" modules
-				return drizzle(String(c.databaseUrl))
+				const db = drizzle(String(c.databaseUrl))
+				return db
 			}),
 			(db) => Effect.promise(() => db.$client.end()),
 		),

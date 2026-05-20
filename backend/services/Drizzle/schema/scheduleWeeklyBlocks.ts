@@ -27,6 +27,6 @@ export const scheduleWeeklyBlocks = pgTable("schedule_weekly_blocks", {
 		.$type<Playout.BlockPlaybackMode>()
 		.notNull()
 		.default("continue"),
-	createdAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
-	updatedAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
+	createdAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
+	updatedAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
 })

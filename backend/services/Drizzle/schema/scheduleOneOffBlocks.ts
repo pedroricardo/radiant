@@ -14,8 +14,8 @@ export const scheduleOneOffBlocks = pgTable("schedule_one_off_blocks", {
 	radioId: radioIdType()
 		.notNull()
 		.references(() => radios.id, { onDelete: "cascade" }),
-	startsAt: timestamp({ withTimezone: true, mode: "string" }).notNull(),
-	endsAt: timestamp({ withTimezone: true, mode: "string" }).notNull(),
+	startsAt: timestamp({ withTimezone: false, mode: "string" }).notNull(),
+	endsAt: timestamp({ withTimezone: false, mode: "string" }).notNull(),
 	targetType: text({ enum: ["playlist", "audio_file"] })
 		.$type<Playout.ScheduleTargetType>()
 		.notNull(),
@@ -30,6 +30,6 @@ export const scheduleOneOffBlocks = pgTable("schedule_one_off_blocks", {
 		.$type<Playout.ModeAfterPlayback>()
 		.notNull()
 		.default("overlay"),
-	createdAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
-	updatedAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
+	createdAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
+	updatedAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
 })

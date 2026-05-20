@@ -2,7 +2,19 @@ import { AudioSource } from "@radiant/backend/lib"
 import { MediaLibrary, MediaNode, Playout, type Playlist, type Radio } from "@radiant/client"
 import type { ScheduleOneOffBlock, ScheduleWeeklyBlock } from "@radiant/client/lib/Playout"
 import { eq } from "drizzle-orm"
-import { Array, Data, DateTime, Duration, Effect, Match, Metric, Option, pipe, Schema, Stream } from "effect"
+import {
+	Array,
+	Data,
+	DateTime,
+	Duration,
+	Effect,
+	Match,
+	Metric,
+	Option,
+	pipe,
+	Schema,
+	Stream,
+} from "effect"
 import type { ParseError } from "effect/ParseResult"
 import type { Simplify } from "effect/Types"
 import assert from "node:assert/strict"
@@ -12,8 +24,12 @@ import { scheduleOneOffBlocks } from "../Drizzle/schema/scheduleOneOffBlocks"
 import { scheduleWeeklyBlocks } from "../Drizzle/schema/scheduleWeeklyBlocks"
 import { MediaLibraryService } from "../MediaLibraryService"
 import * as RadioManager from "../RadioManager"
-import { radioMetric, radioMultiplexerSetClusterTotal, radioPlayoutSyncsTotal } from "../RadioManager/metrics"
-import { StorageService } from "../StorageService"
+import {
+	radioMetric,
+	radioMultiplexerSetClusterTotal,
+	radioPlayoutSyncsTotal,
+} from "../RadioManager/metrics"
+import * as StorageService from "../StorageService"
 type ScheduleBlock = Data.TaggedEnum<{
 	OneOff: Playout.ScheduleOneOffBlock
 	Weekly: Playout.ScheduleWeeklyBlock
@@ -48,7 +64,9 @@ type TimelineHit = Data.TaggedEnum<{
 	}
 }>
 const TimelineHit = Data.taggedEnum<TimelineHit>()
-const describeTimelineHit = (timelineHit: TimelineHit): Record<string, string | number | boolean | null> =>
+const describeTimelineHit = (
+	timelineHit: TimelineHit,
+): Record<string, string | number | boolean | null> =>
 	TimelineHit.$match({
 		Silence: () => ({
 			timelineHit: "Silence",
@@ -91,7 +109,7 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 		const radioRepo = yield* RadioManager.RadioRepository
 		const db = yield* Drizzle
 		const mediaLibrary = yield* MediaLibraryService
-		const storage = yield* StorageService
+		const storage = yield* StorageService.StorageService
 		const fetchBlocks = Effect.fn("PlayoutManager.fetchBlocks")(function* (radioId: Radio.RadioId) {
 			// FIXME: Find a way to narrow the query down to filter out blocks that aren't even close to the current time to save bandwidth
 			const { allOneOffBlocks, allWeeklyBlocks } = yield* Effect.all(
@@ -145,7 +163,7 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 				}),
 			)
 			return blocks
-			})
+		})
 
 		const checkCollisionWithOneOffBlock = Effect.fn("checkCollisionWithOneOffBlock")(function* (
 			block: ScheduleOneOffBlock,
@@ -155,7 +173,11 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 				DateTime.lessThan(block.startsAt, block.endsAt),
 				"DateTime.lessThan(block.startsAt, block.endsAt)",
 			)
-
+			yield* Effect.annotateLogsScoped({
+				time,
+				block,
+			})
+			yield* Effect.logDebug("Checking collision with one off block")
 			const isInsideBlock =
 				DateTime.greaterThanOrEqualTo(time, block.startsAt) && DateTime.lessThan(time, block.endsAt)
 			if (!isInsideBlock) {
@@ -215,7 +237,7 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 					}),
 				}),
 			)
-			})
+		}, Effect.scoped)
 		const checkCollisionWithWeeklyBlock = Effect.fn("checkCollisionWithWeeklyBlock")(function* (
 			block: ScheduleWeeklyBlock,
 			time: DateTime.Zoned,
@@ -247,7 +269,7 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 				Option.flatten,
 				Option.getOrElse(TimelineHit.Silence),
 			)
-			})
+		})
 
 		const syncNow = Effect.fn("PlayoutManager.syncNow")(function* (
 			radioId: Radio.RadioId,
@@ -258,12 +280,7 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 			const radio = yield* radioRepo.getRadioInfo(radioId)
 			const blocks = yield* fetchBlocks(radioId)
 
-			const now = pipe(
-				yield* DateTime.now,
-				DateTime.unsafeSetZoneNamed(radio.timezone, {
-					adjustForTimeZone: true
-				}),
-			)
+			const now = pipe(yield* DateTime.now, DateTime.unsafeSetZoneNamed(radio.timezone))
 
 			const timelineHit = yield* findBlockCollidingWithTime(blocks, now)
 			yield* Effect.logInfo("playout.timeline_resolved").pipe(
@@ -280,50 +297,55 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 				Match.tagsExhaustive({
 					Silence: (_) =>
 						Effect.gen(function* () {
-							yield* Effect.logInfo("playout.apply_silence").pipe(
-								Effect.annotateLogs({ radioId }),
-							)
+							yield* Effect.logInfo("playout.apply_silence").pipe(Effect.annotateLogs({ radioId }))
 							yield* multiplexer.setCluster([])
 							yield* Metric.increment(radioMetric(radioMultiplexerSetClusterTotal, radioId))
 						}),
 
-					AudioFile: (hit) => Effect.gen(function* () {
-						const storageKey = hit.mediaNode.storageKey
-						assert.ok(storageKey); // Se é um ficheiro de audio, ele necessariamente vai ter um storageKey, se não tiver, o banco de dados tá corrompido
-						yield* Effect.logInfo("playout.apply_audio_file").pipe(
-							Effect.annotateLogs({
-								radioId,
-								mediaNodeId: hit.mediaNode.id,
-								storageKey,
-								playbackPositionMs: Duration.toMillis(hit.playbackPosition),
-							}),
-						)
-						const encodedAudioStream = yield* storage.readObject(storageKey)
+					AudioFile: (hit) =>
+						Effect.gen(function* () {
+							const storageKey = hit.mediaNode.storageKey
+							assert.ok(storageKey) // Se é um ficheiro de audio, ele necessariamente vai ter um storageKey, se não tiver, o banco de dados tá corrompido
+							const filePath = yield* StorageService.readObjectAsTempFileScoped(storageKey).pipe(
+								Effect.provideService(StorageService.StorageService, storage),
+							)
 
-						const source = yield* AudioSource.fromEncodedAudioFileStream(encodedAudioStream, {
-							seek: hit.playbackPosition,
-						}).pipe(
-							Effect.map(AudioSource.mapStream(Stream.timeout("3 seconds"))),
-						)
-						yield* multiplexer.setCluster([
-							{
-								id: hit.mediaNode.id,
-								volume: 1.0,
-								source: source,
-							},
-						])
-						yield* Metric.increment(radioMetric(radioMultiplexerSetClusterTotal, radioId))
-					}),
+							yield* Effect.logInfo("playout.apply_audio_file").pipe(
+								Effect.annotateLogs({
+									radioId,
+									mediaNodeId: hit.mediaNode.id,
+									storageKey,
+									playbackPositionMs: Duration.toMillis(hit.playbackPosition),
+									filePath,
+								}),
+							)
 
-					Playlist: (playlist) => Effect.gen(function* () {
-						return yield* Effect.die("playlist takeover is not implemented yet")
-					}),
+							const source = yield* AudioSource.fromAudioFile(filePath, {
+								seek: hit.playbackPosition,
+							}).pipe(
+								Effect.map(AudioSource.mapStream(Stream.timeout("3 seconds"))),
+								Effect.map(AudioSource.mapStream(Stream.tap(Effect.logTrace))),
+							)
+							yield* multiplexer.setCluster([
+								{
+									id: hit.mediaNode.id,
+									volume: 1.0,
+									source: source,
+								},
+							])
+							yield* Metric.increment(radioMetric(radioMultiplexerSetClusterTotal, radioId))
+						}),
+
+					Playlist: (playlist) =>
+						Effect.gen(function* () {
+							return yield* Effect.die("playlist takeover is not implemented yet")
+						}),
 				}),
 			)
 			yield* Effect.logInfo("playout.sync_now_applied").pipe(
 				Effect.annotateLogs({ radioId, ...describeTimelineHit(timelineHit) }),
 			)
-			})
+		})
 
 		const takeover = Effect.fn("PlayoutManager.takeover")(function* (
 			radioId: Radio.RadioId,
@@ -332,14 +354,16 @@ export class PlayoutManager extends Effect.Service<PlayoutManager>()("PlayoutMan
 				readonly readyLatch?: Effect.Latch
 			},
 		) {
-			yield* Effect.logInfo("playout.takeover_started").pipe(Effect.annotateLogs({ radioId }))
+			yield* Effect.annotateLogsScoped({ radioId })
+			yield* Effect.logInfo("playout.takeover_started")
 			yield* syncNow(radioId, multiplexer)
 			if (options?.readyLatch != null) {
 				yield* options.readyLatch.open
 			}
-			yield* Effect.logInfo("playout.takeover_ready").pipe(Effect.annotateLogs({ radioId }))
-			return yield* Effect.never
-			})
+			yield* Effect.logInfo("playout.takeover_ready")
+			yield* Effect.logInfo("playout.hanging")
+			yield* Effect.never
+		}, Effect.scoped)
 		return {
 			syncNow,
 			takeover,

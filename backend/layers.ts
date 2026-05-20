@@ -1,7 +1,7 @@
+import * as Otlp from "@effect/opentelemetry/Otlp"
 import { FetchHttpClient } from "@effect/platform"
 import { BunContext } from "@effect/platform-bun"
-import * as Otlp from "@effect/opentelemetry/Otlp"
-import { Layer, Logger } from "effect"
+import { Layer, Logger, LogLevel } from "effect"
 import { IcyEncoder, PlayoutManager, RadioManager } from "./services"
 import { AuthService } from "./services/AuthService/AuthService"
 import * as OAuth from "./services/AuthService/oauth"
@@ -42,7 +42,7 @@ const authServiceLayer = AuthService.Default.pipe(
 
 const oauthStateLayer = oauthStateCheckerLayer.pipe(Layer.provideMerge(dbLayer))
 
-const storageServiceLayer = StorageService.LocalDiskStorageService;
+const storageServiceLayer = StorageService.LocalDiskStorageService
 const metadataExtractionServiceLayer = MetadataExtractionService.MusicMetadataExtractionService
 const mediaLibraryServiceLayer = MediaLibraryService.DatabaseMediaLibraryService.pipe(
 	Layer.provideMerge(dbLayer),
@@ -59,6 +59,33 @@ const radioManagerLayer = RadioManager.layer.pipe(
 )
 
 const otelBaseUrl = process.env.RADIANT_OTEL_BASE_URL
+const effectLogLevel = (() => {
+	switch (process.env.EFFECT_LOG?.trim().toLowerCase()) {
+		case undefined:
+		case "":
+			return LogLevel.Info
+		case "all":
+			return LogLevel.All
+		case "trace":
+			return LogLevel.Trace
+		case "debug":
+			return LogLevel.Debug
+		case "info":
+			return LogLevel.Info
+		case "warn":
+		case "warning":
+			return LogLevel.Warning
+		case "error":
+			return LogLevel.Error
+		case "fatal":
+			return LogLevel.Fatal
+		case "none":
+		case "off":
+			return LogLevel.None
+		default:
+			return LogLevel.Info
+	}
+})()
 const otelHeaders = process.env.RADIANT_OTEL_HEADERS
 	? (JSON.parse(process.env.RADIANT_OTEL_HEADERS) as Record<string, string>)
 	: undefined
@@ -106,5 +133,6 @@ export const ProductionLayer = Layer.mergeAll(
 ).pipe(
 	Layer.provideMerge(BunContext.layer),
 	Layer.provideMerge(observabilityLive),
-	Layer.provideMerge(Logger.pretty)
+	Layer.provideMerge(Logger.pretty),
+	Layer.provideMerge(Logger.minimumLogLevel(effectLogLevel)),
 )

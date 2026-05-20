@@ -22,7 +22,7 @@ export const playlistItems = pgTable(
 			.notNull()
 			.default("track"),
 		position: integer().notNull(),
-		createdAt: timestamp({ withTimezone: true, mode: "string" }).defaultNow().notNull(),
+		createdAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
 	},
 	(playlistItems) => [
 		uniqueIndex("playlist_items_playlist_position_index").on(
