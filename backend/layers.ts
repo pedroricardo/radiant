@@ -10,6 +10,11 @@ import * as AccountLinkService from "./services/AuthService/oauth/AccountLinkSer
 import * as Drizzle from "./services/Drizzle"
 import * as MediaLibraryService from "./services/MediaLibraryService"
 import * as MetadataExtractionService from "./services/MetadataExtractionService"
+import * as RedisService from "./services/RedisService"
+import {
+	ScheduleBlockRepositoryLive,
+	ScheduleBlockServiceLive,
+} from "./services/ScheduleBlockService"
 import * as SessionService from "./services/SessionService"
 import * as StorageService from "./services/StorageService"
 import * as UserRepository from "./services/UserRepository"
@@ -43,17 +48,36 @@ const authServiceLayer = AuthService.Default.pipe(
 const oauthStateLayer = oauthStateCheckerLayer.pipe(Layer.provideMerge(dbLayer))
 
 const storageServiceLayer = StorageService.LocalDiskStorageService
+const redisServiceConfigLayer = RedisService.Config.fromConfig
+const bunRedisClientLayer = RedisService.BunRedisClient.layer.pipe(
+	Layer.provide(redisServiceConfigLayer),
+)
+const redisStorageLayer = RedisService.RedisStorage.layerBun.pipe(
+	Layer.provide(bunRedisClientLayer),
+)
+const redisPubSubLayer = RedisService.RedisPubSub.layerBun.pipe(
+	Layer.provide(bunRedisClientLayer),
+)
 const metadataExtractionServiceLayer = MetadataExtractionService.MusicMetadataExtractionService
 const mediaLibraryServiceLayer = MediaLibraryService.DatabaseMediaLibraryService.pipe(
 	Layer.provideMerge(dbLayer),
 	Layer.provideMerge(metadataExtractionServiceLayer),
 	Layer.provideMerge(storageServiceLayer),
 )
+const radioRepositoryLayer = RadioManager.RadioRepository.Default.pipe(Layer.provideMerge(dbLayer))
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(Layer.provideMerge(dbLayer))
+const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(redisPubSubLayer),
+)
 
 const radioManagerLayer = RadioManager.layer.pipe(
 	Layer.provideMerge(IcyEncoder.layer),
 	Layer.provideMerge(PlayoutManager.layer),
-	Layer.provideMerge(RadioManager.RadioRepository.Default),
+	Layer.provideMerge(redisPubSubLayer),
+	Layer.provideMerge(scheduleBlockServiceLayer),
+	Layer.provideMerge(radioRepositoryLayer),
 	Layer.provideMerge(dbLayer),
 	Layer.provideMerge(mediaLibraryServiceLayer),
 )
@@ -127,6 +151,10 @@ export const ProductionLayer = Layer.mergeAll(
 	accountLinkLayer,
 	authServiceLayer,
 	radioManagerLayer,
+	scheduleBlockRepositoryLayer,
+	scheduleBlockServiceLayer,
+	redisStorageLayer,
+	redisPubSubLayer,
 	storageServiceLayer,
 	metadataExtractionServiceLayer,
 	mediaLibraryServiceLayer,

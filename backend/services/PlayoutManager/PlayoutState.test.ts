@@ -1,5 +1,5 @@
-import { expect } from "bun:test"
 import { MediaNode } from "@radiant/client"
+import { expect } from "bun:test"
 import { DateTime, Duration, Effect, Option } from "effect"
 
 import { it } from "../../bun-test-effect"
@@ -59,92 +59,92 @@ it.effect("PlayoutState bootstrap into active one-off block", () =>
 
 it.effect("PlayoutState advance shifts from current block to next block", () =>
 	Effect.sync(() => {
-	const initialState = {
-		current: Option.some(audioPlan()),
-		next: Option.some({
-			at: at("2025-01-06T10:00:15Z"),
-			plan: PlayoutState.CurrentPlan.Silence(),
-		}),
-		scheduledAdvanceAt: Option.some(at("2025-01-06T10:00:15Z")),
-	}
-	const result = PlayoutState.advance(initialState, {
-		current: PlayoutState.CurrentPlan.Silence(),
-		next: Option.none(),
-	})
+		const initialState = {
+			current: Option.some(audioPlan()),
+			next: Option.some({
+				at: at("2025-01-06T10:00:15Z"),
+				plan: PlayoutState.CurrentPlan.Silence(),
+			}),
+			scheduledAdvanceAt: Option.some(at("2025-01-06T10:00:15Z")),
+		}
+		const result = PlayoutState.advance(initialState, {
+			current: PlayoutState.CurrentPlan.Silence(),
+			next: Option.none(),
+		})
 
-	expect(result.commands).toEqual([
-		{ _tag: "ApplyCurrentPlan", plan: PlayoutState.CurrentPlan.Silence() },
-		{ _tag: "CancelScheduledAdvance" },
-	])
+		expect(result.commands).toEqual([
+			{ _tag: "ApplyCurrentPlan", plan: PlayoutState.CurrentPlan.Silence() },
+			{ _tag: "CancelScheduledAdvance" },
+		])
 	}),
 )
 
 it.effect("PlayoutState resync with identical snapshot emits no meaningful commands", () =>
 	Effect.sync(() => {
-	const state = {
-		current: Option.some(audioPlan()),
-		next: Option.some({
-			at: at("2025-01-06T10:00:15Z"),
-			plan: PlayoutState.CurrentPlan.Silence(),
-		}),
-		scheduledAdvanceAt: Option.some(at("2025-01-06T10:00:15Z")),
-	}
-	const result = PlayoutState.resync(state, {
-		current: audioPlan({
-			playbackPosition: Duration.seconds(3),
-		}),
-		next: Option.some({
-			at: at("2025-01-06T10:00:15Z"),
-			plan: PlayoutState.CurrentPlan.Silence(),
-		}),
-	})
+		const state = {
+			current: Option.some(audioPlan()),
+			next: Option.some({
+				at: at("2025-01-06T10:00:15Z"),
+				plan: PlayoutState.CurrentPlan.Silence(),
+			}),
+			scheduledAdvanceAt: Option.some(at("2025-01-06T10:00:15Z")),
+		}
+		const result = PlayoutState.resync(state, {
+			current: audioPlan({
+				playbackPosition: Duration.seconds(3),
+			}),
+			next: Option.some({
+				at: at("2025-01-06T10:00:15Z"),
+				plan: PlayoutState.CurrentPlan.Silence(),
+			}),
+		})
 
-	expect(result.commands).toEqual([{ _tag: "Noop" }])
+		expect(result.commands).toEqual([{ _tag: "Noop" }])
 	}),
 )
 
 it.effect("PlayoutState resync with changed next block cancels and reschedules", () =>
 	Effect.sync(() => {
-	const state = {
-		current: Option.some(PlayoutState.CurrentPlan.Silence()),
-		next: Option.some({
-			at: at("2025-01-06T10:00:15Z"),
-			plan: audioPlan(),
-		}),
-		scheduledAdvanceAt: Option.some(at("2025-01-06T10:00:15Z")),
-	}
-	const result = PlayoutState.resync(state, {
-		current: PlayoutState.CurrentPlan.Silence(),
-		next: Option.some({
-			at: at("2025-01-06T10:00:20Z"),
-			plan: audioPlan({
-				blockId: "sob_2",
-				startsAt: at("2025-01-06T10:00:20Z"),
-				endsAt: at("2025-01-06T10:00:25Z"),
+		const state = {
+			current: Option.some(PlayoutState.CurrentPlan.Silence()),
+			next: Option.some({
+				at: at("2025-01-06T10:00:15Z"),
+				plan: audioPlan(),
 			}),
-		}),
-	})
+			scheduledAdvanceAt: Option.some(at("2025-01-06T10:00:15Z")),
+		}
+		const result = PlayoutState.resync(state, {
+			current: PlayoutState.CurrentPlan.Silence(),
+			next: Option.some({
+				at: at("2025-01-06T10:00:20Z"),
+				plan: audioPlan({
+					blockId: "sob_2",
+					startsAt: at("2025-01-06T10:00:20Z"),
+					endsAt: at("2025-01-06T10:00:25Z"),
+				}),
+			}),
+		})
 
-	expect(result.commands).toEqual([
-		{ _tag: "CancelScheduledAdvance" },
-		{ _tag: "ScheduleAdvanceAt", at: at("2025-01-06T10:00:20Z") },
-	])
+		expect(result.commands).toEqual([
+			{ _tag: "CancelScheduledAdvance" },
+			{ _tag: "ScheduleAdvanceAt", at: at("2025-01-06T10:00:20Z") },
+		])
 	}),
 )
 
 it.effect("PlayoutState stop emits cancel command and clears state", () =>
 	Effect.sync(() => {
-	const state = {
-		current: Option.some(audioPlan()),
-		next: Option.some({
-			at: at("2025-01-06T10:00:15Z"),
-			plan: PlayoutState.CurrentPlan.Silence(),
-		}),
-		scheduledAdvanceAt: Option.some(at("2025-01-06T10:00:15Z")),
-	}
-	const result = PlayoutState.stop(state)
+		const state = {
+			current: Option.some(audioPlan()),
+			next: Option.some({
+				at: at("2025-01-06T10:00:15Z"),
+				plan: PlayoutState.CurrentPlan.Silence(),
+			}),
+			scheduledAdvanceAt: Option.some(at("2025-01-06T10:00:15Z")),
+		}
+		const result = PlayoutState.stop(state)
 
-	expect(result.state).toEqual(PlayoutState.make())
-	expect(result.commands).toEqual([{ _tag: "CancelScheduledAdvance" }])
+		expect(result.state).toEqual(PlayoutState.make())
+		expect(result.commands).toEqual([{ _tag: "CancelScheduledAdvance" }])
 	}),
 )

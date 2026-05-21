@@ -5,6 +5,12 @@ import { Effect, Layer } from "effect"
 import * as Drizzle from "@radiant/backend/services/Drizzle"
 import * as MediaLibraryService from "@radiant/backend/services/MediaLibraryService"
 import * as MetadataExtractionService from "@radiant/backend/services/MetadataExtractionService"
+import * as RadioManager from "@radiant/backend/services/RadioManager"
+import * as RedisService from "@radiant/backend/services/RedisService"
+import {
+	ScheduleBlockRepositoryLive,
+	ScheduleBlockServiceLive,
+} from "@radiant/backend/services/ScheduleBlockService"
 import * as StorageService from "@radiant/backend/services/StorageService"
 import {
 	MediaLibraryInvalidAudioFileError,
@@ -21,6 +27,7 @@ import {
 	ReadLocalFileInfoError,
 } from "./domains/local-filesystem/errors"
 import { FetchAudioNodesError, NoAudioNodesForRadioError } from "./domains/media-library/errors"
+import { NoCurrentBlockForNextError } from "./domains/playout/errors"
 import { FetchPlaylistsError, NoPlaylistsForRadioError } from "./domains/playlists/errors"
 import { FetchRadiosError, RadioSelectionNotFoundError } from "./domains/radios/errors"
 import * as Prompter from "./shared/Prompter"
@@ -28,12 +35,30 @@ import { PromptCanceledError, PromptExecutionError } from "./shared/Prompter"
 import { clackLoggerLayer } from "./shared/logger"
 
 const drizzleLayer = Drizzle.layer.pipe(Layer.provide(Drizzle.Config.fromConfig))
+const redisConfigLayer = RedisService.Config.fromConfig
+const bunRedisClientLayer = RedisService.BunRedisClient.layer.pipe(
+	Layer.provideMerge(redisConfigLayer),
+)
+const redisPubSubLayer = RedisService.RedisPubSub.layerBun.pipe(
+	Layer.provideMerge(bunRedisClientLayer),
+)
 const storageLayer = StorageService.LocalDiskStorageService
 const metadataExtractionLayer = MetadataExtractionService.MusicMetadataExtractionService
 const mediaLibraryLayer = MediaLibraryService.DatabaseMediaLibraryService.pipe(
 	Layer.provideMerge(drizzleLayer),
 	Layer.provideMerge(storageLayer),
 	Layer.provideMerge(metadataExtractionLayer),
+)
+const radioRepositoryLayer = RadioManager.RadioRepository.Default.pipe(
+	Layer.provideMerge(drizzleLayer),
+)
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(
+	Layer.provideMerge(drizzleLayer),
+)
+const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(redisPubSubLayer),
 )
 
 const run = rootCommand.pipe(
@@ -68,6 +93,9 @@ const logKnownCliError = (error: unknown) => {
 	if (error instanceof NoAudioNodesForRadioError) {
 		return Effect.logWarning(error.message)
 	}
+	if (error instanceof NoCurrentBlockForNextError) {
+		return Effect.logWarning(error.message)
+	}
 	if (error instanceof ReadLocalDirectoryError) {
 		return Effect.logError(error.message)
 	}
@@ -96,6 +124,9 @@ const logKnownCliError = (error: unknown) => {
 	return Effect.logFatal(error)
 }
 const cliLayer = mediaLibraryLayer.pipe(
+	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(scheduleBlockServiceLayer),
 	Layer.provideMerge(Prompter.clack),
 	Layer.provideMerge(clackLoggerLayer),
 	Layer.provideMerge(BunContext.layer),

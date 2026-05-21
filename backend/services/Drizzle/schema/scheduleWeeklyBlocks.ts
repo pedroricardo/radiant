@@ -27,6 +27,10 @@ export const scheduleWeeklyBlocks = pgTable("schedule_weekly_blocks", {
 		.$type<Playout.BlockPlaybackMode>()
 		.notNull()
 		.default("continue"),
+	modeAfterPlayback: text({ enum: ["overlay"] })
+		.$type<Playout.ModeAfterPlayback>()
+		.notNull()
+		.default("overlay"),
 	createdAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
 	updatedAt: timestamp({ withTimezone: false, mode: "string" }).defaultNow().notNull(),
 })

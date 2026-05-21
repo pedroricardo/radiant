@@ -1,5 +1,5 @@
 import { expect } from "bun:test"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, TestClock } from "effect"
 import * as DateTime from "effect/DateTime"
 
 import { it } from "@radiant/backend/bun-test-effect"
@@ -11,49 +11,68 @@ import { scheduleOneOffBlocks } from "@radiant/backend/services/Drizzle/schema/s
 import { scheduleWeeklyBlocks } from "@radiant/backend/services/Drizzle/schema/scheduleWeeklyBlocks"
 import { users } from "@radiant/backend/services/Drizzle/schema/user"
 import { MediaLibraryService } from "@radiant/backend/services/MediaLibraryService"
+import { RadioRepository } from "@radiant/backend/services/RadioManager"
+import * as RedisService from "@radiant/backend/services/RedisService"
+import {
+	ScheduleBlockRepositoryLive,
+	ScheduleBlockServiceLive,
+} from "@radiant/backend/services/ScheduleBlockService"
 import { TestDbLayer, resetDb } from "@radiant/backend/test/support/testDb"
 import { makeUnimplementedServiceLayer } from "@radiant/backend/test/support/unimplementedService"
 import { MediaNode, Playlist, Radio } from "@radiant/client/lib"
 
-import { OverlappingBlockError } from "./errors"
-import { insertBlock } from "./repository"
+import { NoCurrentBlockForNextError, OverlappingBlockError } from "./errors"
+import { insertBlock, resolveOneOffStartInput } from "./repository"
 
+const mediaLibraryMockLayer = makeUnimplementedServiceLayer(MediaLibraryService, {
+	getNode: ({ radioId, nodeId }) =>
+		Effect.succeed({
+			id: nodeId,
+			radioId,
+			parentId: null,
+			kind: "audio_file",
+			name: "Track",
+			storageKey: `${radioId}/${nodeId}`,
+			mimeType: "audio/wav",
+			sizeBytes: 1n,
+			durationMs: 60_000,
+			containerFormat: "WAVE",
+			audioCodec: "PCM",
+			bitrate: 1_411_200,
+			title: null,
+			artist: null,
+			album: null,
+			albumArtist: null,
+			genre: null,
+			year: null,
+			trackNumber: null,
+			trackTotal: null,
+			diskNumber: null,
+			diskTotal: null,
+			coverArtStorageKey: null,
+			coverArtMimeType: null,
+			sampleRate: 44_100,
+			channels: 2,
+			fileHash: null,
+			createdAt: DateTime.unsafeFromDate(new Date("2025-01-01T00:00:00Z")),
+			updatedAt: DateTime.unsafeFromDate(new Date("2025-01-01T00:00:00Z")),
+		}),
+})
+const radioRepositoryLayer = RadioRepository.Default.pipe(Layer.provideMerge(TestDbLayer))
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(
+	Layer.provideMerge(TestDbLayer),
+)
+const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(RedisService.RedisPubSub.NoopRedisPubSub),
+)
 const testLayer = Layer.mergeAll(
 	TestDbLayer,
-	makeUnimplementedServiceLayer(MediaLibraryService, {
-		getNode: ({ radioId, nodeId }) =>
-			Effect.succeed({
-				id: nodeId,
-				radioId,
-				parentId: null,
-				kind: "audio_file",
-				name: "Track",
-				storageKey: `${radioId}/${nodeId}`,
-				mimeType: "audio/wav",
-				sizeBytes: 1n,
-				durationMs: 60_000,
-				containerFormat: "WAVE",
-				audioCodec: "PCM",
-				bitrate: 1_411_200,
-				title: null,
-				artist: null,
-				album: null,
-				albumArtist: null,
-				genre: null,
-				year: null,
-				trackNumber: null,
-				trackTotal: null,
-				diskNumber: null,
-				diskTotal: null,
-				coverArtStorageKey: null,
-				coverArtMimeType: null,
-				sampleRate: 44_100,
-				channels: 2,
-				fileHash: null,
-				createdAt: DateTime.unsafeFromDate(new Date("2025-01-01T00:00:00Z")),
-				updatedAt: DateTime.unsafeFromDate(new Date("2025-01-01T00:00:00Z")),
-			}),
-	}),
+	mediaLibraryMockLayer,
+	radioRepositoryLayer,
+	scheduleBlockRepositoryLayer,
+	scheduleBlockServiceLayer,
 )
 
 const radioId = "radio_test" as Radio.RadioId
@@ -141,14 +160,16 @@ it.layer(testLayer)(({ scoped }) => {
 					startsAt: "2025-01-06T10:00:00Z",
 					endsAt: "2025-01-06T10:30:00Z",
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
 				}),
 			)
 
-			const result = yield* Effect.flip(insertBlock(radio, oneOffDraft("2025-01-06T10:15:00Z", 10 * 60 + 45)))
+			const result = yield* Effect.flip(
+				insertBlock(radio, oneOffDraft("2025-01-06T10:15:00Z", 10 * 60 + 45)),
+			)
 			expect(result).toBeInstanceOf(OverlappingBlockError)
 		}),
 	)
@@ -166,7 +187,7 @@ it.layer(testLayer)(({ scoped }) => {
 					startMinuteOfDay: 10 * 60,
 					endMinuteOfDay: 11 * 60,
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
@@ -206,15 +227,64 @@ it.layer(testLayer)(({ scoped }) => {
 					startMinuteOfDay: 10 * 60,
 					endMinuteOfDay: 11 * 60,
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
 				}),
 			)
 
-			const result = yield* Effect.flip(insertBlock(radio, oneOffDraft("2025-01-06T10:15:00Z", 10 * 60 + 45)))
+			const result = yield* Effect.flip(
+				insertBlock(radio, oneOffDraft("2025-01-06T10:15:00Z", 10 * 60 + 45)),
+			)
 			expect(result).toBeInstanceOf(OverlappingBlockError)
 		}),
 	)
+
+	scoped('"next" resolves to the current block end time', () =>
+		Effect.gen(function* () {
+			yield* resetDb
+			yield* seedBase
+			const db = yield* Drizzle.Drizzle
+			yield* TestClock.setTime(DateTime.unsafeFromDate(new Date("2025-01-06T10:15:00Z")))
+			yield* Effect.promise(() =>
+				db.insert(scheduleOneOffBlocks).values({
+					id: "sob_current",
+					radioId,
+					startsAt: "2025-01-06T10:00:00Z",
+					endsAt: "2025-01-06T10:30:00Z",
+					targetType: "audio_file",
+					playlistId: null,
+					mediaNodeId,
+					playlistFillMode: null,
+					playbackMode: "continue",
+				}),
+			)
+
+			const resolved = yield* resolveOneOffStartInput(radio, "2025-01-06", "next")
+
+			expect(formatDateTime(resolved.startsAt)).toBe("2025-01-06T10:30:00.000Z")
+			expect(resolved.startMinuteOfDay).toBe(10 * 60 + 30)
+			expect(resolved.date).toEqual({
+				year: 2025,
+				month: 1,
+				day: 6,
+			})
+		}),
+	)
+
+	scoped('"next" fails when there is no current block', () =>
+		Effect.gen(function* () {
+			yield* resetDb
+			yield* seedBase
+			yield* TestClock.setTime(DateTime.unsafeFromDate(new Date("2025-01-06T10:15:00Z")))
+
+			const result = yield* Effect.flip(resolveOneOffStartInput(radio, "2025-01-06", "next"))
+
+			expect(result).toBeInstanceOf(NoCurrentBlockForNextError)
+		}),
+	)
 })
+
+const formatDateTime = (dateTime: DateTime.Utc | DateTime.Zoned) =>
+	new Date(DateTime.toEpochMillis(dateTime)).toISOString()

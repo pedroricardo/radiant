@@ -1,11 +1,11 @@
 import { MediaNode, Playout, Radio } from "@radiant/client"
 import { expect } from "bun:test"
-import { Effect, Layer, Ref, Stream, TestClock } from "effect"
+import { DateTime, Effect, Layer, Queue, Ref, Stream, TestClock } from "effect"
 
 import { BunContext } from "@effect/platform-bun"
 import { it } from "../../bun-test-effect"
-import { makeServiceSpy } from "../../test/support/serviceSpy"
 import type { ServiceSpyCall } from "../../test/support/serviceSpy"
+import { makeServiceSpy } from "../../test/support/serviceSpy"
 import { TestDbLayer, resetDb } from "../../test/support/testDb"
 import { makeUnimplementedServiceLayer } from "../../test/support/unimplementedService"
 import { AudioMultiplexer } from "../AudioMultiplexer"
@@ -20,6 +20,13 @@ import { users } from "../Drizzle/schema/user"
 import { DatabaseMediaLibraryService } from "../MediaLibraryService"
 import { UnimplementedMetadataExtractionService } from "../MetadataExtractionService"
 import * as RadioManager from "../RadioManager"
+import * as RedisService from "../RedisService"
+import type { RedisPubSubMessage } from "../RedisService/RedisPubSub"
+import {
+	ScheduleBlockService,
+	ScheduleBlockRepositoryLive,
+	ScheduleBlockServiceLive,
+} from "../ScheduleBlockService"
 import { StorageService } from "../StorageService"
 import { PlayoutManager } from "./PlayoutManager"
 
@@ -52,9 +59,67 @@ const radioRepositoryLayer = RadioManager.RadioRepository.Default.pipe(
 )
 
 const mediaLibraryLayer = DatabaseMediaLibraryService.pipe(Layer.provideMerge(infrastructureLayer))
+const inMemoryRedisPubSubLayer = Layer.effect(
+	RedisService.RedisPubSub.RedisPubSub,
+	Effect.gen(function* () {
+		const subscribersRef = yield* Ref.make(
+			[] as ReadonlyArray<Queue.Enqueue<RedisPubSubMessage>>,
+		)
+
+		return {
+			publish: (channel, message) =>
+				Effect.gen(function* () {
+					const subscribers = yield* Ref.get(subscribersRef)
+					for (const subscriber of subscribers) {
+						yield* Queue.offer(subscriber, { channel, message })
+					}
+					return subscribers.length
+				}),
+			subscribe: (_channel) =>
+				Effect.gen(function* () {
+					const queue = yield* Queue.unbounded<RedisPubSubMessage>()
+					yield* Ref.update(subscribersRef, (subscribers) => [...subscribers, queue])
+					yield* Effect.addFinalizer(() =>
+						Ref.update(subscribersRef, (subscribers) =>
+							subscribers.filter((subscriber) => subscriber !== queue),
+						).pipe(Effect.zipRight(Queue.shutdown(queue))),
+					)
+					return queue
+				}),
+			subscribeMany: (_channels) =>
+				Effect.gen(function* () {
+					const queue = yield* Queue.unbounded<RedisPubSubMessage>()
+					yield* Ref.update(subscribersRef, (subscribers) => [...subscribers, queue])
+					yield* Effect.addFinalizer(() =>
+						Ref.update(subscribersRef, (subscribers) =>
+							subscribers.filter((subscriber) => subscriber !== queue),
+						).pipe(Effect.zipRight(Queue.shutdown(queue))),
+					)
+					return queue
+				}),
+		} satisfies RedisService.RedisPubSub.RedisPubSubShape
+	}),
+)
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(
+	Layer.provideMerge(infrastructureLayer),
+)
+const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(inMemoryRedisPubSubLayer),
+)
 
 const playoutManagerLayer = PlayoutManager.Default.pipe(
-	Layer.provideMerge(Layer.mergeAll(infrastructureLayer, radioRepositoryLayer, mediaLibraryLayer)),
+	Layer.provideMerge(
+		Layer.mergeAll(
+			infrastructureLayer,
+			radioRepositoryLayer,
+			mediaLibraryLayer,
+			inMemoryRedisPubSubLayer,
+			scheduleBlockRepositoryLayer,
+			scheduleBlockServiceLayer,
+		),
+	),
 )
 
 const testLayer = Layer.mergeAll(
@@ -62,6 +127,9 @@ const testLayer = Layer.mergeAll(
 	AudioMultiplexer.Default,
 	radioRepositoryLayer,
 	mediaLibraryLayer,
+	inMemoryRedisPubSubLayer,
+	scheduleBlockRepositoryLayer,
+	scheduleBlockServiceLayer,
 	playoutManagerLayer,
 ).pipe(Layer.provideMerge(BunContext.layer))
 
@@ -176,7 +244,7 @@ const seedOneOffBlock = (startsAtIso: string) =>
 					startsAt: startsAtIso,
 					endsAt: new Date("2025-01-06T10:10:00Z").toISOString(),
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
@@ -200,7 +268,7 @@ const seedOneOffBlockForNode = (args: {
 					startsAt: args.startsAtIso,
 					endsAt: new Date("2025-01-06T10:10:00Z").toISOString(),
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId: args.mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
@@ -221,7 +289,7 @@ const seedWeeklyBlock = () =>
 					startMinuteOfDay: 10 * 60,
 					endMinuteOfDay: 10 * 60 + 1,
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
@@ -313,9 +381,7 @@ it.layer(testLayer)(({ scoped }) => {
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
 			const playoutManager = yield* PlayoutManager
-			yield* playoutManager
-				.takeover(radioId, spiedMultiplexer.service)
-				.pipe(Effect.forkScoped)
+			yield* playoutManager.takeover(radioId, spiedMultiplexer.service).pipe(Effect.forkScoped)
 
 			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
 
@@ -338,9 +404,7 @@ it.layer(testLayer)(({ scoped }) => {
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
 			const playoutManager = yield* PlayoutManager
-			yield* playoutManager
-				.takeover(radioId, spiedMultiplexer.service)
-				.pipe(Effect.forkScoped)
+			yield* playoutManager.takeover(radioId, spiedMultiplexer.service).pipe(Effect.forkScoped)
 
 			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
 
@@ -389,9 +453,7 @@ it.layer(testLayer)(({ scoped }) => {
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
 			const playoutManager = yield* PlayoutManager
-			yield* playoutManager
-				.takeover(radioId, spiedMultiplexer.service)
-				.pipe(Effect.forkScoped)
+			yield* playoutManager.takeover(radioId, spiedMultiplexer.service).pipe(Effect.forkScoped)
 			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
 
 			yield* TestClock.adjust("10 seconds")
@@ -406,5 +468,39 @@ it.layer(testLayer)(({ scoped }) => {
 			expect(latestCluster).toHaveLength(1)
 			expect(latestCluster[0]!.id).toBe(mediaNodeIdB)
 		}),
+	)
+
+	scoped("schedule block mutations published through Redis resync active runtimes", () =>
+		Effect.gen(function* () {
+			yield* resetDb
+			yield* seedRadio("UTC")
+			yield* seedOneOffBlockForNode({
+				id: "sob_resync" as Playout.ScheduleOneOffBlockId,
+				startsAtIso: "2025-01-06T10:00:20Z",
+				mediaNodeId,
+			})
+			yield* TestClock.setTime(new Date("2025-01-06T10:00:00Z"))
+
+			const multiplexer = yield* AudioMultiplexer
+			const spiedMultiplexer = makeServiceSpy(multiplexer)
+			yield* spiedMultiplexer.spy.clear
+
+			const playoutManager = yield* PlayoutManager
+			const scheduleBlockService = yield* ScheduleBlockService
+			yield* playoutManager.takeover(radioId, spiedMultiplexer.service).pipe(Effect.forkScoped)
+
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
+
+				yield* scheduleBlockService.updateBlock(radioId, "sob_resync", {
+					blockKind: "one-off",
+					startsAt: DateTime.unsafeFromDate(new Date("2025-01-06T10:00:10Z")),
+					endsAt: DateTime.unsafeFromDate(new Date("2025-01-06T10:00:20Z")),
+				})
+
+				yield* TestClock.adjust("250 millis")
+				yield* TestClock.adjust("10 seconds")
+
+				expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 2)).toEqual([0, 1])
+			}),
 	)
 })

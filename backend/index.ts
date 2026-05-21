@@ -6,6 +6,7 @@ import { ProductionLayer } from "./layers"
 import { authGroupLive, AuthorizationLive } from "./routes/auth"
 import { mediaLibraryGroupLive } from "./routes/mediaLibrary"
 import { radioGroupLive } from "./routes/radios"
+import { scheduleBlocksGroupLive } from "./routes/scheduleBlocks"
 import { usersGroupLive } from "./routes/users"
 
 declare global {
@@ -17,6 +18,7 @@ export const RadiantApiImpl = HttpApiBuilder.api(RadiantClient.ApiContract.httpA
 	Layer.provide(usersGroupLive),
 	Layer.provide(authGroupLive),
 	Layer.provide(radioGroupLive),
+	Layer.provide(scheduleBlocksGroupLive),
 	Layer.provide(mediaLibraryGroupLive),
 	Layer.provide(AuthorizationLive),
 	Layer.provideMerge(HttpServer.layerContext),

@@ -1,14 +1,12 @@
 import { type Radio } from "@radiant/client"
-import { DateTime, Effect, Fiber, Option, pipe, Ref } from "effect"
+import { DateTime, Duration, Effect, Fiber, Option, pipe, Ref } from "effect"
 
 import type * as AudioMultiplexer from "../AudioMultiplexer"
 import * as PlayoutState from "./PlayoutState"
 
 export type RuntimeSnapshotResolver<E, R> = Effect.Effect<PlayoutState.TimelineSnapshot, E, R>
 
-export type ApplyCurrentPlan<E, R> = (
-	plan: PlayoutState.CurrentPlan,
-) => Effect.Effect<void, E, R>
+export type ApplyCurrentPlan<E, R> = (plan: PlayoutState.CurrentPlan) => Effect.Effect<void, E, R>
 
 export type PlayoutRuntime<ResolveE, ResolveR, ApplyE, ApplyR> = {
 	readonly radioId: Radio.RadioId
@@ -32,9 +30,14 @@ const interruptScheduledAdvance = (
 			)
 			yield* Fiber.interrupt(existing.value).pipe(Effect.ignoreLogged)
 		}
-})
+	})
 
-const interpretCommands = Effect.fn("PlayoutRuntime.interpretCommands")(function* <ApplyE, ApplyR, AdvanceE, AdvanceR>(args: {
+const interpretCommands = Effect.fn("PlayoutRuntime.interpretCommands")(function* <
+	ApplyE,
+	ApplyR,
+	AdvanceE,
+	AdvanceR,
+>(args: {
 	readonly radioId: Radio.RadioId
 	readonly commands: ReadonlyArray<PlayoutState.Command>
 	readonly multiplexer: AudioMultiplexer.AudioMultiplexer
@@ -66,28 +69,28 @@ const interpretCommands = Effect.fn("PlayoutRuntime.interpretCommands")(function
 			case "ScheduleAdvanceAt": {
 				yield* interruptScheduledAdvance(args.scheduledAdvanceFiberRef, args.radioId)
 				const now = yield* DateTime.now
-				const delayMs = Math.max(0, DateTime.toEpochMillis(command.at) - DateTime.toEpochMillis(now))
+				const delay = Duration.max(Duration.zero, DateTime.distance(now, command.at))
 				yield* Effect.logDebug("playout.runtime.advance_scheduled").pipe(
 					Effect.annotateLogs({
 						radioId: args.radioId,
-						delayMs,
+						delayMs: Duration.toMillis(delay),
 						at: DateTime.toEpochMillis(command.at),
 					}),
 				)
-					const fiber = yield* Effect.sleep(delayMs).pipe(
-						Effect.zipRight(
-							Effect.logDebug("playout.runtime.advance_wakeup").pipe(
+				const fiber = yield* Effect.sleep(delay).pipe(
+					Effect.zipRight(
+						Effect.logDebug("playout.runtime.advance_wakeup").pipe(
 							Effect.annotateLogs({
 								radioId: args.radioId,
 								at: DateTime.toEpochMillis(command.at),
-								}),
-							),
+							}),
 						),
-						Effect.zipRight(Ref.set(args.scheduledAdvanceFiberRef, Option.none())),
-						Effect.zipRight(args.onAdvance),
-						Effect.catchAllCause(Effect.logError),
-						Effect.forkDaemon,
-					)
+					),
+					Effect.zipRight(Ref.set(args.scheduledAdvanceFiberRef, Option.none())),
+					Effect.zipRight(args.onAdvance),
+					Effect.catchAllCause(Effect.logError),
+					Effect.forkDaemon,
+				)
 				yield* Ref.set(args.scheduledAdvanceFiberRef, Option.some(fiber))
 				break
 			}
@@ -108,8 +111,9 @@ export const make = <ResolveE, ResolveR, ApplyE, ApplyR>(args: {
 }): Effect.Effect<PlayoutRuntime<ResolveE, ResolveR, ApplyE, ApplyR>> =>
 	Effect.gen(function* () {
 		const stateRef = yield* Ref.make(PlayoutState.make())
-		const scheduledAdvanceFiberRef =
-			yield* Ref.make<Option.Option<Fiber.RuntimeFiber<void, never>>>(Option.none())
+		const scheduledAdvanceFiberRef = yield* Ref.make<
+			Option.Option<Fiber.RuntimeFiber<void, never>>
+		>(Option.none())
 
 		const runTransition = (
 			kind: "bootstrap" | "advance" | "resync",
@@ -127,8 +131,16 @@ export const make = <ResolveE, ResolveR, ApplyE, ApplyR>(args: {
 					Effect.annotateLogs({
 						radioId: args.radioId,
 						kind,
-						oldCurrent: pipe(previous.current, Option.map((current) => current._tag), Option.getOrNull),
-						newCurrent: pipe(result.state.current, Option.map((current) => current._tag), Option.getOrNull),
+						oldCurrent: pipe(
+							previous.current,
+							Option.map((current) => current._tag),
+							Option.getOrNull,
+						),
+						newCurrent: pipe(
+							result.state.current,
+							Option.map((current) => current._tag),
+							Option.getOrNull,
+						),
 						oldNextAt: pipe(
 							previous.next,
 							Option.map((next) => DateTime.toEpochMillis(next.at)),

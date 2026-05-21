@@ -10,6 +10,7 @@ export default pipe(
 			dbCredentials: {
 				url: String(config.databaseUrl),
 			},
+			out: "./backend/test/db"
 		}),
 	),
 	Effect.provide(Drizzle.Config.fromConfig),

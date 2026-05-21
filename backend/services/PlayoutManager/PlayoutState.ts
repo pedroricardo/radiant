@@ -65,10 +65,7 @@ export const Command = Data.taggedEnum<Command>()
 
 const silencePlan: SilencePlan = CurrentPlan.Silence()
 
-const isSameInstant = (
-	left: Option.Option<DateTime.Utc>,
-	right: Option.Option<DateTime.Utc>,
-) =>
+const isSameInstant = (left: Option.Option<DateTime.Utc>, right: Option.Option<DateTime.Utc>) =>
 	left === right ||
 	(Option.isSome(left) &&
 		Option.isSome(right) &&
@@ -87,12 +84,13 @@ const isSameCurrentIdentity = (
 	if (left.value._tag === "Silence" || right.value._tag === "Silence") {
 		return left.value._tag === right.value._tag
 	}
-	return left.value.blockId === right.value.blockId &&
+	return (
+		left.value.blockId === right.value.blockId &&
 		left.value.blockKind === right.value.blockKind &&
 		DateTime.toEpochMillis(left.value.startsAt) === DateTime.toEpochMillis(right.value.startsAt) &&
 		DateTime.toEpochMillis(left.value.endsAt) === DateTime.toEpochMillis(right.value.endsAt)
+	)
 }
-
 
 const reconcile = (state: State, snapshot: TimelineSnapshot): TransitionResult => {
 	const nextState: State = {

@@ -43,6 +43,10 @@
 			"types": "./lib/Playout/index.ts",
 			"default": "./lib/Playout/index.ts"
 		},
+		"./lib/Schedule": {
+			"types": "./lib/Schedule/index.ts",
+			"default": "./lib/Schedule/index.ts"
+		},
 		"./lib/Radio": {
 			"types": "./lib/Radio/index.ts",
 			"default": "./lib/Radio/index.ts"
