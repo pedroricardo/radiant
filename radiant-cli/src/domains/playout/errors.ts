@@ -23,3 +23,14 @@ export class InsertOneOffBlockError extends Schema.TaggedError<InsertOneOffBlock
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
 ) {}
+
+export class OverlappingBlockError extends Schema.TaggedError<OverlappingBlockError>()(
+	"OverlappingBlockError",
+	{
+		radioId: Schema.String,
+		message: Schema.String.pipe(
+			Schema.propertySignature,
+			Schema.withConstructorDefault(() => "This block overlaps an existing block."),
+		),
+	},
+) {}
