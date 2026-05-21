@@ -20,6 +20,10 @@ import { users } from "../Drizzle/schema/user"
 import { DatabaseMediaLibraryService } from "../MediaLibraryService"
 import { UnimplementedMetadataExtractionService } from "../MetadataExtractionService"
 import * as RadioManager from "../RadioManager"
+import {
+	ScheduleBlockRepositoryLive,
+	ScheduleBlockServiceLive,
+} from "../ScheduleBlockService"
 import { StorageService } from "../StorageService"
 import { PlayoutManager } from "./PlayoutManager"
 
@@ -52,9 +56,24 @@ const radioRepositoryLayer = RadioManager.RadioRepository.Default.pipe(
 )
 
 const mediaLibraryLayer = DatabaseMediaLibraryService.pipe(Layer.provideMerge(infrastructureLayer))
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(
+	Layer.provideMerge(infrastructureLayer),
+)
+const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(radioRepositoryLayer),
+)
 
 const playoutManagerLayer = PlayoutManager.Default.pipe(
-	Layer.provideMerge(Layer.mergeAll(infrastructureLayer, radioRepositoryLayer, mediaLibraryLayer)),
+	Layer.provideMerge(
+		Layer.mergeAll(
+			infrastructureLayer,
+			radioRepositoryLayer,
+			mediaLibraryLayer,
+			scheduleBlockRepositoryLayer,
+			scheduleBlockServiceLayer,
+		),
+	),
 )
 
 const testLayer = Layer.mergeAll(
@@ -62,6 +81,8 @@ const testLayer = Layer.mergeAll(
 	AudioMultiplexer.Default,
 	radioRepositoryLayer,
 	mediaLibraryLayer,
+	scheduleBlockRepositoryLayer,
+	scheduleBlockServiceLayer,
 	playoutManagerLayer,
 ).pipe(Layer.provideMerge(BunContext.layer))
 
@@ -176,7 +197,7 @@ const seedOneOffBlock = (startsAtIso: string) =>
 					startsAt: startsAtIso,
 					endsAt: new Date("2025-01-06T10:10:00Z").toISOString(),
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
@@ -200,7 +221,7 @@ const seedOneOffBlockForNode = (args: {
 					startsAt: args.startsAtIso,
 					endsAt: new Date("2025-01-06T10:10:00Z").toISOString(),
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId: args.mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
@@ -221,7 +242,7 @@ const seedWeeklyBlock = () =>
 					startMinuteOfDay: 10 * 60,
 					endMinuteOfDay: 10 * 60 + 1,
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",

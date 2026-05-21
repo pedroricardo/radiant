@@ -69,7 +69,7 @@ const interpretCommands = Effect.fn("PlayoutRuntime.interpretCommands")(function
 			case "ScheduleAdvanceAt": {
 				yield* interruptScheduledAdvance(args.scheduledAdvanceFiberRef, args.radioId)
 				const now = yield* DateTime.now
-				const delay = Duration.max(Duration.zero, DateTime.distance(command.at, now))
+				const delay = Duration.max(Duration.zero, DateTime.distance(now, command.at))
 				yield* Effect.logDebug("playout.runtime.advance_scheduled").pipe(
 					Effect.annotateLogs({
 						radioId: args.radioId,
