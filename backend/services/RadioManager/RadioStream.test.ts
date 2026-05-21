@@ -21,6 +21,7 @@ import { Drizzle } from "../Drizzle"
 import { IcyEncoder as IcyEncoderService } from "../IcyEncoder"
 import { MediaLibraryService } from "../MediaLibraryService"
 import { PlayoutManager } from "../PlayoutManager"
+import { ScheduleBlockService } from "../ScheduleBlockService"
 import { StorageService } from "../StorageService"
 import { radioListenerConnectionsActive, radioMetric } from "./metrics"
 import { RadioManagerConfig } from "./RadioManagerConfig"
@@ -307,6 +308,7 @@ describe("RadioStream", () => {
 						BunContext.layer,
 						makeUnimplementedServiceLayer(MediaLibraryService),
 						makeUnimplementedServiceLayer(RadioRepository),
+						makeUnimplementedServiceLayer(ScheduleBlockService),
 						makeUnimplementedServiceLayer(Drizzle),
 						makeUnimplementedServiceLayer(StorageService),
 					),
