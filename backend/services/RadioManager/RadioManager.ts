@@ -1,6 +1,5 @@
 import { Radio } from "@radiant/client"
 import { Cache, Duration, Effect } from "effect"
-import { Drizzle } from "../Drizzle"
 import * as IcyEncoder from "../IcyEncoder"
 import { RadioManagerConfig } from "./RadioManagerConfig"
 import { RadioRepository } from "./RadioRepository"
@@ -16,7 +15,6 @@ export class RadioManager extends Effect.Service<RadioManager>()("RadioManager",
 		})
 
 		const encoder = yield* IcyEncoder.IcyEncoder
-		const db = yield* Drizzle
 
 		const { _tag, ...radioRepo } = yield* RadioRepository
 

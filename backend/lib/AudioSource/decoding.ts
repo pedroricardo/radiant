@@ -1,7 +1,7 @@
 import { Duration, Effect, Exit, Scope, Stream } from "effect"
 import { readObjectAsTempFileScoped } from "../../services/StorageService/tempFile"
 
-import { mapStream, fromAudioFile } from "."
+import { fromAudioFile, mapStream } from "."
 
 export const fromStorageObject = (
 	key: string,
@@ -10,8 +10,10 @@ export const fromStorageObject = (
 	},
 ) =>
 	Effect.gen(function* () {
-		const scope = yield* Scope.make();
+		const scope = yield* Scope.make()
 		const tempPath = yield* readObjectAsTempFileScoped(key).pipe(Scope.extend(scope))
 
-		return mapStream(yield* fromAudioFile(tempPath, options), (s) => Stream.ensuring(s, Scope.close(scope, Exit.void)))
+		return mapStream(yield* fromAudioFile(tempPath, options), (s) =>
+			Stream.ensuring(s, Scope.close(scope, Exit.void)),
+		)
 	})

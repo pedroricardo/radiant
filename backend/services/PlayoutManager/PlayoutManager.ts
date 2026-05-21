@@ -2,10 +2,7 @@ import { type Radio } from "@radiant/client"
 import { Effect, HashMap, Metric, Ref } from "effect"
 
 import type * as AudioMultiplexer from "../AudioMultiplexer"
-import {
-	radioMetric,
-	radioPlayoutSyncsTotal,
-} from "../RadioManager/metrics"
+import { radioMetric, radioPlayoutSyncsTotal } from "../RadioManager/metrics"
 import * as PlayoutRuntime from "./PlayoutRuntime"
 import { applyCurrentPlanToMultiplexer, resolveTimelineSnapshot } from "./resolver"
 

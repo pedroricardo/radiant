@@ -4,8 +4,8 @@ import { Effect, Layer, Ref, Stream, TestClock } from "effect"
 
 import { BunContext } from "@effect/platform-bun"
 import { it } from "../../bun-test-effect"
-import { makeServiceSpy } from "../../test/support/serviceSpy"
 import type { ServiceSpyCall } from "../../test/support/serviceSpy"
+import { makeServiceSpy } from "../../test/support/serviceSpy"
 import { TestDbLayer, resetDb } from "../../test/support/testDb"
 import { makeUnimplementedServiceLayer } from "../../test/support/unimplementedService"
 import { AudioMultiplexer } from "../AudioMultiplexer"
@@ -313,9 +313,7 @@ it.layer(testLayer)(({ scoped }) => {
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
 			const playoutManager = yield* PlayoutManager
-			yield* playoutManager
-				.takeover(radioId, spiedMultiplexer.service)
-				.pipe(Effect.forkScoped)
+			yield* playoutManager.takeover(radioId, spiedMultiplexer.service).pipe(Effect.forkScoped)
 
 			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
 
@@ -338,9 +336,7 @@ it.layer(testLayer)(({ scoped }) => {
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
 			const playoutManager = yield* PlayoutManager
-			yield* playoutManager
-				.takeover(radioId, spiedMultiplexer.service)
-				.pipe(Effect.forkScoped)
+			yield* playoutManager.takeover(radioId, spiedMultiplexer.service).pipe(Effect.forkScoped)
 
 			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
 
@@ -389,9 +385,7 @@ it.layer(testLayer)(({ scoped }) => {
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
 			const playoutManager = yield* PlayoutManager
-			yield* playoutManager
-				.takeover(radioId, spiedMultiplexer.service)
-				.pipe(Effect.forkScoped)
+			yield* playoutManager.takeover(radioId, spiedMultiplexer.service).pipe(Effect.forkScoped)
 			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
 
 			yield* TestClock.adjust("10 seconds")

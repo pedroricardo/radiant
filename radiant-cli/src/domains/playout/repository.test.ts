@@ -11,6 +11,11 @@ import { scheduleOneOffBlocks } from "@radiant/backend/services/Drizzle/schema/s
 import { scheduleWeeklyBlocks } from "@radiant/backend/services/Drizzle/schema/scheduleWeeklyBlocks"
 import { users } from "@radiant/backend/services/Drizzle/schema/user"
 import { MediaLibraryService } from "@radiant/backend/services/MediaLibraryService"
+import { RadioRepository } from "@radiant/backend/services/RadioManager"
+import {
+	ScheduleBlockRepositoryLive,
+	ScheduleBlockServiceLive,
+} from "@radiant/backend/services/ScheduleBlockService"
 import { TestDbLayer, resetDb } from "@radiant/backend/test/support/testDb"
 import { makeUnimplementedServiceLayer } from "@radiant/backend/test/support/unimplementedService"
 import { MediaNode, Playlist, Radio } from "@radiant/client/lib"
@@ -18,42 +23,54 @@ import { MediaNode, Playlist, Radio } from "@radiant/client/lib"
 import { OverlappingBlockError } from "./errors"
 import { insertBlock } from "./repository"
 
+const mediaLibraryMockLayer = makeUnimplementedServiceLayer(MediaLibraryService, {
+	getNode: ({ radioId, nodeId }) =>
+		Effect.succeed({
+			id: nodeId,
+			radioId,
+			parentId: null,
+			kind: "audio_file",
+			name: "Track",
+			storageKey: `${radioId}/${nodeId}`,
+			mimeType: "audio/wav",
+			sizeBytes: 1n,
+			durationMs: 60_000,
+			containerFormat: "WAVE",
+			audioCodec: "PCM",
+			bitrate: 1_411_200,
+			title: null,
+			artist: null,
+			album: null,
+			albumArtist: null,
+			genre: null,
+			year: null,
+			trackNumber: null,
+			trackTotal: null,
+			diskNumber: null,
+			diskTotal: null,
+			coverArtStorageKey: null,
+			coverArtMimeType: null,
+			sampleRate: 44_100,
+			channels: 2,
+			fileHash: null,
+			createdAt: DateTime.unsafeFromDate(new Date("2025-01-01T00:00:00Z")),
+			updatedAt: DateTime.unsafeFromDate(new Date("2025-01-01T00:00:00Z")),
+		}),
+})
+const radioRepositoryLayer = RadioRepository.Default.pipe(Layer.provideMerge(TestDbLayer))
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(
+	Layer.provideMerge(TestDbLayer),
+)
+const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(radioRepositoryLayer),
+)
 const testLayer = Layer.mergeAll(
 	TestDbLayer,
-	makeUnimplementedServiceLayer(MediaLibraryService, {
-		getNode: ({ radioId, nodeId }) =>
-			Effect.succeed({
-				id: nodeId,
-				radioId,
-				parentId: null,
-				kind: "audio_file",
-				name: "Track",
-				storageKey: `${radioId}/${nodeId}`,
-				mimeType: "audio/wav",
-				sizeBytes: 1n,
-				durationMs: 60_000,
-				containerFormat: "WAVE",
-				audioCodec: "PCM",
-				bitrate: 1_411_200,
-				title: null,
-				artist: null,
-				album: null,
-				albumArtist: null,
-				genre: null,
-				year: null,
-				trackNumber: null,
-				trackTotal: null,
-				diskNumber: null,
-				diskTotal: null,
-				coverArtStorageKey: null,
-				coverArtMimeType: null,
-				sampleRate: 44_100,
-				channels: 2,
-				fileHash: null,
-				createdAt: DateTime.unsafeFromDate(new Date("2025-01-01T00:00:00Z")),
-				updatedAt: DateTime.unsafeFromDate(new Date("2025-01-01T00:00:00Z")),
-			}),
-	}),
+	mediaLibraryMockLayer,
+	radioRepositoryLayer,
+	scheduleBlockRepositoryLayer,
+	scheduleBlockServiceLayer,
 )
 
 const radioId = "radio_test" as Radio.RadioId
@@ -141,14 +158,16 @@ it.layer(testLayer)(({ scoped }) => {
 					startsAt: "2025-01-06T10:00:00Z",
 					endsAt: "2025-01-06T10:30:00Z",
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
 				}),
 			)
 
-			const result = yield* Effect.flip(insertBlock(radio, oneOffDraft("2025-01-06T10:15:00Z", 10 * 60 + 45)))
+			const result = yield* Effect.flip(
+				insertBlock(radio, oneOffDraft("2025-01-06T10:15:00Z", 10 * 60 + 45)),
+			)
 			expect(result).toBeInstanceOf(OverlappingBlockError)
 		}),
 	)
@@ -166,7 +185,7 @@ it.layer(testLayer)(({ scoped }) => {
 					startMinuteOfDay: 10 * 60,
 					endMinuteOfDay: 11 * 60,
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
@@ -206,14 +225,16 @@ it.layer(testLayer)(({ scoped }) => {
 					startMinuteOfDay: 10 * 60,
 					endMinuteOfDay: 11 * 60,
 					targetType: "audio_file",
-					playlistId,
+					playlistId: null,
 					mediaNodeId,
 					playlistFillMode: null,
 					playbackMode: "continue",
 				}),
 			)
 
-			const result = yield* Effect.flip(insertBlock(radio, oneOffDraft("2025-01-06T10:15:00Z", 10 * 60 + 45)))
+			const result = yield* Effect.flip(
+				insertBlock(radio, oneOffDraft("2025-01-06T10:15:00Z", 10 * 60 + 45)),
+			)
 			expect(result).toBeInstanceOf(OverlappingBlockError)
 		}),
 	)

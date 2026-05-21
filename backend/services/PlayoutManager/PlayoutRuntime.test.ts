@@ -1,11 +1,11 @@
-import { expect } from "bun:test"
-import { DateTime, Duration, Effect, Layer, Option, Ref, TestClock } from "effect"
 import { MediaNode, Radio } from "@radiant/client"
+import { expect } from "bun:test"
+import { DateTime, Duration, Effect, Option, Ref, TestClock } from "effect"
 
 import { it } from "../../bun-test-effect"
 import * as AudioSource from "../../lib/AudioSource"
-import { makeServiceSpy } from "../../test/support/serviceSpy"
 import type { ServiceSpyCall } from "../../test/support/serviceSpy"
+import { makeServiceSpy } from "../../test/support/serviceSpy"
 import { AudioMultiplexer } from "../AudioMultiplexer"
 import * as PlayoutRuntime from "./PlayoutRuntime"
 import * as PlayoutState from "./PlayoutState"
@@ -30,12 +30,13 @@ const waitForSetClusterCallCount = (
 	expectedCount: number,
 ): Effect.Effect<number> =>
 	Effect.gen(function* () {
-		const calls = (yield* Ref.get(callsRef)).filter((call) => call.method === "setCluster")
-		if (calls.length >= expectedCount) {
-			return calls.length
+		for (;;) {
+			const calls = (yield* Ref.get(callsRef)).filter((call) => call.method === "setCluster")
+			if (calls.length >= expectedCount) {
+				return calls.length
+			}
+			yield* Effect.yieldNow()
 		}
-		yield* Effect.yieldNow()
-		return yield* waitForSetClusterCallCount(callsRef, expectedCount)
 	})
 
 it.layer(runtimeLayer)(({ scoped }) => {
@@ -159,9 +160,7 @@ it.layer(runtimeLayer)(({ scoped }) => {
 					onNone: () => null,
 					onSome: (scheduledAdvanceAt) => DateTime.toEpochMillis(scheduledAdvanceAt),
 				}),
-			).toBe(
-				DateTime.toEpochMillis(at("2025-01-06T10:00:20Z")),
-			)
+			).toBe(DateTime.toEpochMillis(at("2025-01-06T10:00:20Z")))
 		}),
 	)
 

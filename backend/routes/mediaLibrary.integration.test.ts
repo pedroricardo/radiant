@@ -1,7 +1,7 @@
+import { BunContext } from "@effect/platform-bun"
 import * as RadiantClient from "@radiant/client"
 import { expect } from "bun:test"
 import { Effect, Layer, Stream } from "effect"
-import { BunContext } from "@effect/platform-bun"
 
 import { RadiantApiImpl } from ".."
 import { it } from "../bun-test-effect"
@@ -13,6 +13,10 @@ import * as MediaLibraryService from "../services/MediaLibraryService"
 import * as MetadataExtractionService from "../services/MetadataExtractionService"
 import { PlayoutManager } from "../services/PlayoutManager"
 import * as RadioManager from "../services/RadioManager"
+import {
+	ScheduleBlockRepositoryLive,
+	ScheduleBlockServiceLive,
+} from "../services/ScheduleBlockService"
 import * as SessionService from "../services/SessionService"
 import * as StorageService from "../services/StorageService"
 import * as UserRepository from "../services/UserRepository"
@@ -116,9 +120,18 @@ const authServiceLayer = AuthService.AuthService.Default.pipe(
 	Layer.provide(userRepoLayer),
 )
 const oauthStateCheckerLayer = OAuth.layerDrizzle.pipe(Layer.provide(dbLayer))
+const radioRepositoryLayer = RadioManager.RadioRepository.Default.pipe(Layer.provide(dbLayer))
+
+
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(Layer.provide(dbLayer))
+const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
+	Layer.provide(scheduleBlockRepositoryLayer),
+	Layer.provide(radioRepositoryLayer),
+)
 const radioManagerLayer = RadioManager.RadioManager.Default.pipe(
+	Layer.provide(scheduleBlockServiceLayer),
 	Layer.provide(PlayoutManager.Default),
-	Layer.provide(RadioManager.RadioRepository.Default),
+	Layer.provide(radioRepositoryLayer),
 	Layer.provide(mediaLibraryLayer),
 	Layer.provide(storageLayer),
 	Layer.provide(dbLayer),
@@ -170,24 +183,27 @@ const seedRadio = (userId: `user_${string}`) =>
 		),
 	)
 
-it.layer(
-	RadiantApiImpl.pipe(
-		Layer.provideMerge(
-			Layer.mergeAll(
-				mediaLibraryLayer,
-				oauthRegistryLayer,
-				authServiceLayer,
-				metadataExtractionLayer,
-				oauthStateCheckerLayer,
-				radioManagerLayer,
-				sessionLayer,
-				userRepoLayer,
-				dbLayer,
-			),
+const apiLayer = RadiantApiImpl.pipe(
+	Layer.provide(
+		Layer.mergeAll(
+			mediaLibraryLayer,
+			oauthRegistryLayer,
+			authServiceLayer,
+			metadataExtractionLayer,
+			oauthStateCheckerLayer,
+			radioRepositoryLayer,
+			radioManagerLayer,
+			scheduleBlockRepositoryLayer,
+			scheduleBlockServiceLayer,
+			sessionLayer,
+			userRepoLayer,
+			dbLayer,
 		),
-		Layer.provideMerge(BunContext.layer),
 	),
-)(({ scoped }) => {
+	Layer.provide(BunContext.layer),
+)
+
+it.layer(Layer.mergeAll(apiLayer, userRepoLayer, sessionLayer, dbLayer))(({ scoped }) => {
 	scoped("MediaLibrary API works in-process through RadiantClient", () =>
 		Effect.gen(function* () {
 			yield* resetDb

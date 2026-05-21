@@ -5,6 +5,11 @@ import { Effect, Layer } from "effect"
 import * as Drizzle from "@radiant/backend/services/Drizzle"
 import * as MediaLibraryService from "@radiant/backend/services/MediaLibraryService"
 import * as MetadataExtractionService from "@radiant/backend/services/MetadataExtractionService"
+import * as RadioManager from "@radiant/backend/services/RadioManager"
+import {
+	ScheduleBlockRepositoryLive,
+	ScheduleBlockServiceLive,
+} from "@radiant/backend/services/ScheduleBlockService"
 import * as StorageService from "@radiant/backend/services/StorageService"
 import {
 	MediaLibraryInvalidAudioFileError,
@@ -34,6 +39,16 @@ const mediaLibraryLayer = MediaLibraryService.DatabaseMediaLibraryService.pipe(
 	Layer.provideMerge(drizzleLayer),
 	Layer.provideMerge(storageLayer),
 	Layer.provideMerge(metadataExtractionLayer),
+)
+const radioRepositoryLayer = RadioManager.RadioRepository.Default.pipe(
+	Layer.provideMerge(drizzleLayer),
+)
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(
+	Layer.provideMerge(drizzleLayer),
+)
+const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(radioRepositoryLayer),
 )
 
 const run = rootCommand.pipe(
@@ -96,6 +111,9 @@ const logKnownCliError = (error: unknown) => {
 	return Effect.logFatal(error)
 }
 const cliLayer = mediaLibraryLayer.pipe(
+	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(scheduleBlockServiceLayer),
 	Layer.provideMerge(Prompter.clack),
 	Layer.provideMerge(clackLoggerLayer),
 	Layer.provideMerge(BunContext.layer),

@@ -10,6 +10,10 @@ import * as AccountLinkService from "./services/AuthService/oauth/AccountLinkSer
 import * as Drizzle from "./services/Drizzle"
 import * as MediaLibraryService from "./services/MediaLibraryService"
 import * as MetadataExtractionService from "./services/MetadataExtractionService"
+import {
+	ScheduleBlockRepositoryLive,
+	ScheduleBlockServiceLive,
+} from "./services/ScheduleBlockService"
 import * as SessionService from "./services/SessionService"
 import * as StorageService from "./services/StorageService"
 import * as UserRepository from "./services/UserRepository"
@@ -49,13 +53,19 @@ const mediaLibraryServiceLayer = MediaLibraryService.DatabaseMediaLibraryService
 	Layer.provideMerge(metadataExtractionServiceLayer),
 	Layer.provideMerge(storageServiceLayer),
 )
+const radioRepositoryLayer = RadioManager.RadioRepository.Default.pipe(Layer.provideMerge(dbLayer))
 
 const radioManagerLayer = RadioManager.layer.pipe(
 	Layer.provideMerge(IcyEncoder.layer),
 	Layer.provideMerge(PlayoutManager.layer),
-	Layer.provideMerge(RadioManager.RadioRepository.Default),
+	Layer.provideMerge(radioRepositoryLayer),
 	Layer.provideMerge(dbLayer),
 	Layer.provideMerge(mediaLibraryServiceLayer),
+)
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(Layer.provideMerge(dbLayer))
+const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(radioRepositoryLayer),
 )
 
 const otelBaseUrl = process.env.RADIANT_OTEL_BASE_URL
@@ -127,6 +137,8 @@ export const ProductionLayer = Layer.mergeAll(
 	accountLinkLayer,
 	authServiceLayer,
 	radioManagerLayer,
+	scheduleBlockRepositoryLayer,
+	scheduleBlockServiceLayer,
 	storageServiceLayer,
 	metadataExtractionServiceLayer,
 	mediaLibraryServiceLayer,

@@ -1,1 +1,0 @@
-DROP TABLE "radio_members" CASCADE;
