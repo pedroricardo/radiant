@@ -11,8 +11,8 @@ import { Drizzle } from "../services/Drizzle"
 import { radios } from "../services/Drizzle/schema/radios"
 import * as MediaLibraryService from "../services/MediaLibraryService"
 import * as MetadataExtractionService from "../services/MetadataExtractionService"
-import { PlayoutManager } from "../services/PlayoutManager"
 import * as RadioManager from "../services/RadioManager"
+import * as RedisService from "../services/RedisService"
 import {
 	ScheduleBlockRepositoryLive,
 	ScheduleBlockServiceLive,
@@ -105,37 +105,48 @@ const metadataExtractionLayer = Layer.succeed(MetadataExtractionService.Metadata
 		),
 })
 const mediaLibraryLayer = MediaLibraryService.DatabaseMediaLibraryService.pipe(
-	Layer.provide(dbLayer),
-	Layer.provide(metadataExtractionLayer),
-	Layer.provide(storageLayer),
+	Layer.provideMerge(dbLayer),
+	Layer.provideMerge(metadataExtractionLayer),
+	Layer.provideMerge(storageLayer),
 )
 const oauthRegistryLayer = OAuth.OAuthProvidersRegistry.Default
 const accountLinkLayer = OAuth.AccountLinkService.layerDrizzle.pipe(
-	Layer.provide(dbLayer),
-	Layer.provide(userRepoLayer),
+	Layer.provideMerge(dbLayer),
+	Layer.provideMerge(userRepoLayer),
 )
 const authServiceLayer = AuthService.AuthService.Default.pipe(
-	Layer.provide(OAuth.OAuthProvidersRegistry.Default),
-	Layer.provide(accountLinkLayer),
-	Layer.provide(userRepoLayer),
+	Layer.provideMerge(OAuth.OAuthProvidersRegistry.Default),
+	Layer.provideMerge(accountLinkLayer),
+	Layer.provideMerge(userRepoLayer),
 )
-const oauthStateCheckerLayer = OAuth.layerDrizzle.pipe(Layer.provide(dbLayer))
-const radioRepositoryLayer = RadioManager.RadioRepository.Default.pipe(Layer.provide(dbLayer))
+const oauthStateCheckerLayer = OAuth.layerDrizzle.pipe(Layer.provideMerge(dbLayer))
+const radioRepositoryLayer = RadioManager.RadioRepository.Default.pipe(Layer.provideMerge(dbLayer))
 
-
-const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(Layer.provide(dbLayer))
+const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(Layer.provideMerge(dbLayer))
 const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
-	Layer.provide(scheduleBlockRepositoryLayer),
-	Layer.provide(radioRepositoryLayer),
+	Layer.provideMerge(scheduleBlockRepositoryLayer),
+	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(RedisService.RedisPubSub.NoopRedisPubSub),
 )
-const radioManagerLayer = RadioManager.RadioManager.Default.pipe(
-	Layer.provide(scheduleBlockServiceLayer),
-	Layer.provide(PlayoutManager.Default),
-	Layer.provide(radioRepositoryLayer),
-	Layer.provide(mediaLibraryLayer),
-	Layer.provide(storageLayer),
-	Layer.provide(dbLayer),
-)
+const radioManagerLayer = Layer.effect(
+	RadioManager.RadioManager,
+	Effect.gen(function* () {
+		const repository = yield* RadioManager.RadioRepository
+		return {
+			_tag: "RadioManager" as const,
+			getUserRadioInfo: repository.getUserRadioInfo,
+			getRadioInfo: repository.getRadioInfo,
+			listUserRadios: repository.listUserRadios,
+			createRadio: repository.createRadio,
+			updateRadio: repository.updateRadio,
+			updateUserRadio: repository.updateUserRadio,
+			deleteRadio: repository.deleteRadio,
+			deleteUserRadio: repository.deleteUserRadio,
+			getStream: (_radioId: `radio_${string}`) =>
+				Effect.dieMessage("media library integration test should not request live radio streams"),
+		}
+	}),
+).pipe(Layer.provideMerge(radioRepositoryLayer))
 
 const makeSilentWav = (durationMs: number) => {
 	const sampleRate = 44_100
@@ -189,18 +200,18 @@ const apiLayer = RadiantApiImpl.pipe(
 			mediaLibraryLayer,
 			oauthRegistryLayer,
 			authServiceLayer,
-			metadataExtractionLayer,
-			oauthStateCheckerLayer,
-			radioRepositoryLayer,
-			radioManagerLayer,
-			scheduleBlockRepositoryLayer,
-			scheduleBlockServiceLayer,
-			sessionLayer,
-			userRepoLayer,
-			dbLayer,
+				metadataExtractionLayer,
+				oauthStateCheckerLayer,
+				radioRepositoryLayer,
+				radioManagerLayer,
+				scheduleBlockRepositoryLayer,
+				scheduleBlockServiceLayer,
+				sessionLayer,
+				userRepoLayer,
+				dbLayer,
 		),
 	),
-	Layer.provide(BunContext.layer),
+	Layer.provideMerge(BunContext.layer),
 )
 
 it.layer(Layer.mergeAll(apiLayer, userRepoLayer, sessionLayer, dbLayer))(({ scoped }) => {

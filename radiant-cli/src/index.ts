@@ -6,6 +6,7 @@ import * as Drizzle from "@radiant/backend/services/Drizzle"
 import * as MediaLibraryService from "@radiant/backend/services/MediaLibraryService"
 import * as MetadataExtractionService from "@radiant/backend/services/MetadataExtractionService"
 import * as RadioManager from "@radiant/backend/services/RadioManager"
+import * as RedisService from "@radiant/backend/services/RedisService"
 import {
 	ScheduleBlockRepositoryLive,
 	ScheduleBlockServiceLive,
@@ -33,6 +34,13 @@ import { PromptCanceledError, PromptExecutionError } from "./shared/Prompter"
 import { clackLoggerLayer } from "./shared/logger"
 
 const drizzleLayer = Drizzle.layer.pipe(Layer.provide(Drizzle.Config.fromConfig))
+const redisConfigLayer = RedisService.Config.fromConfig
+const bunRedisClientLayer = RedisService.BunRedisClient.layer.pipe(
+	Layer.provideMerge(redisConfigLayer),
+)
+const redisPubSubLayer = RedisService.RedisPubSub.layerBun.pipe(
+	Layer.provideMerge(bunRedisClientLayer),
+)
 const storageLayer = StorageService.LocalDiskStorageService
 const metadataExtractionLayer = MetadataExtractionService.MusicMetadataExtractionService
 const mediaLibraryLayer = MediaLibraryService.DatabaseMediaLibraryService.pipe(
@@ -49,6 +57,7 @@ const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(
 const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
 	Layer.provideMerge(scheduleBlockRepositoryLayer),
 	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(redisPubSubLayer),
 )
 
 const run = rootCommand.pipe(

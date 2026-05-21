@@ -12,6 +12,7 @@ import { scheduleWeeklyBlocks } from "@radiant/backend/services/Drizzle/schema/s
 import { users } from "@radiant/backend/services/Drizzle/schema/user"
 import { MediaLibraryService } from "@radiant/backend/services/MediaLibraryService"
 import { RadioRepository } from "@radiant/backend/services/RadioManager"
+import * as RedisService from "@radiant/backend/services/RedisService"
 import {
 	ScheduleBlockRepositoryLive,
 	ScheduleBlockServiceLive,
@@ -64,6 +65,7 @@ const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(
 const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
 	Layer.provideMerge(scheduleBlockRepositoryLayer),
 	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(RedisService.RedisPubSub.NoopRedisPubSub),
 )
 const testLayer = Layer.mergeAll(
 	TestDbLayer,

@@ -3,6 +3,12 @@ import { Context, DateTime, Effect, Layer, Option, Schema } from "effect"
 import { Id, Radio, Schedule } from "@radiant/client/lib"
 
 import { RadioRepository } from "../RadioManager"
+import { RedisPubSub } from "../RedisService/RedisPubSub"
+import {
+	scheduleBlocksChangedChannel,
+	ScheduleBlockMutationNotificationJson,
+	type ScheduleBlockMutation,
+} from "./ScheduleBlockEvents"
 import { ScheduleBlockRepository } from "./ScheduleBlockRepository"
 
 export type ScheduleBlockServiceShape = {
@@ -106,9 +112,35 @@ const toOneOffCursor = (cursor: string | undefined): Schedule.ScheduleOneOffBloc
 
 export const ScheduleBlockServiceLive = Layer.effect(
 	ScheduleBlockService,
-	Effect.gen(function* () {
+		Effect.gen(function* () {
 		const repository = yield* ScheduleBlockRepository
 		const radioRepository = yield* RadioRepository
+		const redisPubSub = yield* RedisPubSub
+
+		const publishMutation = (
+			radioId: Schedule.ScheduleWeeklyBlock["radioId"],
+			blockId: string,
+			mutation: ScheduleBlockMutation,
+		) =>
+			Schema.encode(ScheduleBlockMutationNotificationJson)({
+				eventType: "schedule-blocks-changed",
+				radioId,
+				blockId,
+				mutation,
+			}).pipe(
+				Effect.flatMap((payload) => redisPubSub.publish(scheduleBlocksChangedChannel, payload)),
+				Effect.catchAll((error) =>
+					Effect.logError("schedule_block_service.publish_mutation_failed").pipe(
+						Effect.annotateLogs({
+							radioId,
+							blockId,
+							mutation,
+							error: String(error),
+						}),
+					),
+				),
+				Effect.asVoid,
+			)
 
 		const validateCandidate: ScheduleBlockServiceShape["validateCandidate"] = (
 			radioId,
@@ -204,7 +236,9 @@ export const ScheduleBlockServiceLive = Layer.effect(
 						new Schedule.ScheduleBlockConflictError({ radioId, conflicts: validation.conflicts }),
 					)
 				}
-				return yield* repository.insertBlock(radioId, draft)
+				const block = yield* repository.insertBlock(radioId, draft)
+				yield* publishMutation(radioId, block.id, "created")
+				return block
 			})
 
 		const updateBlock: ScheduleBlockServiceShape["updateBlock"] = (radioId, blockId, patch) =>
@@ -220,11 +254,15 @@ export const ScheduleBlockServiceLive = Layer.effect(
 						new Schedule.ScheduleBlockConflictError({ radioId, conflicts: validation.conflicts }),
 					)
 				}
-				return yield* repository.updateBlock(radioId, next)
+				const block = yield* repository.updateBlock(radioId, next)
+				yield* publishMutation(radioId, block.id, "updated")
+				return block
 			})
 
 		const deleteBlock: ScheduleBlockServiceShape["deleteBlock"] = (radioId, blockId) =>
-			repository.deleteBlock(radioId, blockId)
+			repository.deleteBlock(radioId, blockId).pipe(
+				Effect.zipRight(publishMutation(radioId, blockId, "deleted")),
+			)
 
 		return {
 			listAllBlocks,

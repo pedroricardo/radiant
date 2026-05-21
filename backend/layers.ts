@@ -69,11 +69,13 @@ const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(Layer.prov
 const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
 	Layer.provideMerge(scheduleBlockRepositoryLayer),
 	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(redisPubSubLayer),
 )
 
 const radioManagerLayer = RadioManager.layer.pipe(
 	Layer.provideMerge(IcyEncoder.layer),
 	Layer.provideMerge(PlayoutManager.layer),
+	Layer.provideMerge(redisPubSubLayer),
 	Layer.provideMerge(scheduleBlockServiceLayer),
 	Layer.provideMerge(radioRepositoryLayer),
 	Layer.provideMerge(dbLayer),

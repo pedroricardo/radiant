@@ -13,6 +13,7 @@ import { playlists } from "../services/Drizzle/schema/playlists"
 import { radios } from "../services/Drizzle/schema/radios"
 import * as MediaLibraryService from "../services/MediaLibraryService"
 import * as RadioManager from "../services/RadioManager"
+import * as RedisService from "../services/RedisService"
 import {
 	ScheduleBlockRepositoryLive,
 	ScheduleBlockServiceLive,
@@ -66,6 +67,7 @@ const scheduleBlockRepositoryLayer = ScheduleBlockRepositoryLive.pipe(Layer.prov
 const scheduleBlockServiceLayer = ScheduleBlockServiceLive.pipe(
 	Layer.provideMerge(scheduleBlockRepositoryLayer),
 	Layer.provideMerge(radioRepositoryLayer),
+	Layer.provideMerge(RedisService.RedisPubSub.NoopRedisPubSub),
 )
 const utc = (iso: string): DateTime.Utc => DateTime.unsafeFromDate(new Date(iso))
 

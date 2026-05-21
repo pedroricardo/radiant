@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Queue, Runtime, Scope } from "effect"
+import { Context, Effect, Layer, Queue, Scope } from "effect"
 import { BunRedisClient } from "./BunRedisClient"
 import { RedisServiceError, redisServiceError } from "./RedisErrors"
 
@@ -69,6 +69,19 @@ export const layerBun = Layer.effect(
 			subscribe: (channel) => makeSubscriptionQueue(client, [channel]),
 
 			subscribeMany: (channels) => makeSubscriptionQueue(client, channels),
+		} satisfies RedisPubSubShape
+	}),
+)
+
+export const NoopRedisPubSub = Layer.effect(
+	RedisPubSub,
+	Effect.gen(function* () {
+		const emptyQueue = () => Queue.unbounded<RedisPubSubMessage>()
+
+		return {
+			publish: () => Effect.succeed(0),
+			subscribe: () => emptyQueue(),
+			subscribeMany: () => emptyQueue(),
 		} satisfies RedisPubSubShape
 	}),
 )
