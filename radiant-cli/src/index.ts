@@ -27,6 +27,7 @@ import {
 	ReadLocalFileInfoError,
 } from "./domains/local-filesystem/errors"
 import { FetchAudioNodesError, NoAudioNodesForRadioError } from "./domains/media-library/errors"
+import { NoCurrentBlockForNextError } from "./domains/playout/errors"
 import { FetchPlaylistsError, NoPlaylistsForRadioError } from "./domains/playlists/errors"
 import { FetchRadiosError, RadioSelectionNotFoundError } from "./domains/radios/errors"
 import * as Prompter from "./shared/Prompter"
@@ -90,6 +91,9 @@ const logKnownCliError = (error: unknown) => {
 		return Effect.logError(error.message)
 	}
 	if (error instanceof NoAudioNodesForRadioError) {
+		return Effect.logWarning(error.message)
+	}
+	if (error instanceof NoCurrentBlockForNextError) {
 		return Effect.logWarning(error.message)
 	}
 	if (error instanceof ReadLocalDirectoryError) {

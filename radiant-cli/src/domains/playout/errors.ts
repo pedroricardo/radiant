@@ -34,3 +34,16 @@ export class OverlappingBlockError extends Schema.TaggedError<OverlappingBlockEr
 		),
 	},
 ) {}
+
+export class NoCurrentBlockForNextError extends Schema.TaggedError<NoCurrentBlockForNextError>()(
+	"NoCurrentBlockForNextError",
+	{
+		radioId: Schema.String,
+		message: Schema.String.pipe(
+			Schema.propertySignature,
+			Schema.withConstructorDefault(
+				() => 'There is no current block to anchor "next" from for this radio.',
+			),
+		),
+	},
+) {}

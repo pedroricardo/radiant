@@ -1,5 +1,5 @@
 import { expect } from "bun:test"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, TestClock } from "effect"
 import * as DateTime from "effect/DateTime"
 
 import { it } from "@radiant/backend/bun-test-effect"
@@ -21,8 +21,8 @@ import { TestDbLayer, resetDb } from "@radiant/backend/test/support/testDb"
 import { makeUnimplementedServiceLayer } from "@radiant/backend/test/support/unimplementedService"
 import { MediaNode, Playlist, Radio } from "@radiant/client/lib"
 
-import { OverlappingBlockError } from "./errors"
-import { insertBlock } from "./repository"
+import { NoCurrentBlockForNextError, OverlappingBlockError } from "./errors"
+import { insertBlock, resolveOneOffStartInput } from "./repository"
 
 const mediaLibraryMockLayer = makeUnimplementedServiceLayer(MediaLibraryService, {
 	getNode: ({ radioId, nodeId }) =>
@@ -240,4 +240,51 @@ it.layer(testLayer)(({ scoped }) => {
 			expect(result).toBeInstanceOf(OverlappingBlockError)
 		}),
 	)
+
+	scoped('"next" resolves to the current block end time', () =>
+		Effect.gen(function* () {
+			yield* resetDb
+			yield* seedBase
+			const db = yield* Drizzle.Drizzle
+			yield* TestClock.setTime(DateTime.unsafeFromDate(new Date("2025-01-06T10:15:00Z")))
+			yield* Effect.promise(() =>
+				db.insert(scheduleOneOffBlocks).values({
+					id: "sob_current",
+					radioId,
+					startsAt: "2025-01-06T10:00:00Z",
+					endsAt: "2025-01-06T10:30:00Z",
+					targetType: "audio_file",
+					playlistId: null,
+					mediaNodeId,
+					playlistFillMode: null,
+					playbackMode: "continue",
+				}),
+			)
+
+			const resolved = yield* resolveOneOffStartInput(radio, "2025-01-06", "next")
+
+			expect(formatDateTime(resolved.startsAt)).toBe("2025-01-06T10:30:00.000Z")
+			expect(resolved.startMinuteOfDay).toBe(10 * 60 + 30)
+			expect(resolved.date).toEqual({
+				year: 2025,
+				month: 1,
+				day: 6,
+			})
+		}),
+	)
+
+	scoped('"next" fails when there is no current block', () =>
+		Effect.gen(function* () {
+			yield* resetDb
+			yield* seedBase
+			yield* TestClock.setTime(DateTime.unsafeFromDate(new Date("2025-01-06T10:15:00Z")))
+
+			const result = yield* Effect.flip(resolveOneOffStartInput(radio, "2025-01-06", "next"))
+
+			expect(result).toBeInstanceOf(NoCurrentBlockForNextError)
+		}),
+	)
 })
+
+const formatDateTime = (dateTime: DateTime.Utc | DateTime.Zoned) =>
+	new Date(DateTime.toEpochMillis(dateTime)).toISOString()

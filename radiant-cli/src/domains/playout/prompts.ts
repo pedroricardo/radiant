@@ -15,6 +15,7 @@ import { fetchAudioNodes } from "../media-library/repository"
 import { promptPlaylist } from "../playlists/prompts"
 import { fetchPlaylists } from "../playlists/repository"
 import type { RadioRow } from "../radios/repository"
+import { resolveOneOffStartInput } from "./repository"
 import type { BlockDraft, BlockKind, BlockTargetSelection } from "./types"
 
 const weekdayOptions = [
@@ -181,11 +182,15 @@ export const promptBlockDraft = (radio: RadioRow) =>
 		})
 
 		const startTime = yield* prompter.text({
-			message: "Start time (HH:mm, +00:01, +1m, +30s)",
-			placeholder: "14:00",
+			message: 'Start time (HH:mm, +00:01, +1m, +30s, next)',
+			placeholder: "14:00 or next",
 			validate: (value) =>
 				runValidation(
 					Effect.gen(function* () {
+						if ((value ?? "").trim().toLowerCase() === "next") {
+							return undefined
+						}
+
 						const parsedStart = yield* Effect.either(
 							Schema.decodeUnknown(OneOffStartInput)({
 								timeZone: radio.timezone,
@@ -195,19 +200,13 @@ export const promptBlockDraft = (radio: RadioRow) =>
 						)
 
 						return Either.isLeft(parsedStart)
-							? "Use HH:mm or a relative offset like +00:01, +1m, +30s."
+							? 'Use HH:mm, "next", or a relative offset like +00:01, +1m, +30s.'
 							: undefined
 					}),
 				),
 		})
 
-		const resolvedStart = runValidation(
-			Schema.decodeUnknown(OneOffStartInput)({
-				timeZone: radio.timezone,
-				dateInput: date,
-				startInput: startTime,
-			}),
-		)
+		const resolvedStart = yield* resolveOneOffStartInput(radio, date, startTime)
 
 		const endMinuteOfDay =
 			target.targetType === "audio_file"
