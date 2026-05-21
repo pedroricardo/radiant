@@ -33,8 +33,9 @@ const CHANNELS = 2
 const SAMPLE_RATE = 44_100
 const FRAME_LENGTH = FRAME_SAMPLES * CHANNELS
 const FRAME_DURATION_MS = (FRAME_SAMPLES / SAMPLE_RATE) * 1_000
-const TARGET_BUFFER_MS = 30_000
-const FRAME_BUFFER_CAPACITY = Math.ceil(TARGET_BUFFER_MS / FRAME_DURATION_MS)
+const TARGET_DELAY_MS = 1_000
+const FRAME_BUFFER_CAPACITY = Math.ceil(TARGET_DELAY_MS / FRAME_DURATION_MS)
+const frameDurationMillis = (frames: number) => Math.round(FRAME_DURATION_MS * frames)
 
 const makeFrame = (value: number): Float32Array => {
 	const frame = new Float32Array(FRAME_LENGTH)
@@ -158,11 +159,12 @@ const makeFakeMultiplexerServiceLayer = (frameValueRef: Ref.Ref<number>) =>
 	Layer.effect(AudioMultiplexer, makeFakeMultiplexer(frameValueRef))
 
 describe("RadioStream", () => {
-	it.scoped("replays the cached window to new subscribers", () =>
+	it.scoped("replays the cached delay window to new subscribers", () =>
 		Effect.gen(function* () {
 			const frameValueRef = yield* Ref.make(7)
 			const multiplexer = yield* makeFakeMultiplexer(frameValueRef)
 			const runtime = yield* RadioStream.makeRuntime(multiplexer)
+			yield* TestClock.adjust(frameDurationMillis(3))
 
 			const frames = yield* Stream.runCollect(Stream.take(runtime.subscribe, 3))
 
@@ -174,13 +176,14 @@ describe("RadioStream", () => {
 		}),
 	)
 
-	it.scoped("fills the first warmup window with the current playout source", () =>
+	it.scoped("replays recent past frames from the current playout source", () =>
 		Effect.gen(function* () {
 			const frameValueRef = yield* Ref.make(0)
 			const multiplexer = yield* makeFakeMultiplexer(frameValueRef)
 			yield* syncMultiplexerToRealAudio(multiplexer)
 
 			const runtime = yield* RadioStream.makeRuntime(multiplexer)
+			yield* TestClock.adjust(frameDurationMillis(3))
 			const frames = yield* Stream.runCollect(Stream.take(runtime.subscribe, 3))
 
 			expect(firstSample(Chunk.unsafeGet(frames, 0))).toBe(1)
@@ -189,7 +192,7 @@ describe("RadioStream", () => {
 		}),
 	)
 
-	it.scoped("does not replay the first 30 second window after the cached prebuffer", () =>
+	it.scoped("replays only the bounded past-delay window before continuing live", () =>
 		Effect.gen(function* () {
 			const multiplexer = yield* makeSequentialFakeMultiplexer()
 			const runtime = yield* RadioStream.makeRuntime(multiplexer)
@@ -198,7 +201,7 @@ describe("RadioStream", () => {
 				Stream.runCollect(Stream.take(runtime.subscribe, FRAME_BUFFER_CAPACITY + 3)),
 			)
 
-			yield* TestClock.adjust(FRAME_DURATION_MS * 3)
+			yield* TestClock.adjust(frameDurationMillis(FRAME_BUFFER_CAPACITY + 3))
 
 			const frames = yield* Fiber.join(framesFiber)
 
@@ -216,7 +219,7 @@ describe("RadioStream", () => {
 		}),
 	)
 
-	it.scoped("cloneStream does not replay the cached window at the listener boundary", () =>
+	it.scoped("cloneStream replays only the bounded past-delay window at the listener boundary", () =>
 		Effect.gen(function* () {
 			const multiplexer = yield* makeSequentialFakeMultiplexer()
 			const runtime = yield* RadioStream.makeRuntime(multiplexer)
@@ -235,7 +238,7 @@ describe("RadioStream", () => {
 				Stream.runCollect(Stream.take(encoded.stream, FRAME_BUFFER_CAPACITY + 3)),
 			)
 
-			yield* TestClock.adjust(FRAME_DURATION_MS * 3)
+			yield* TestClock.adjust(frameDurationMillis(FRAME_BUFFER_CAPACITY + 3))
 
 			const chunks = yield* Fiber.join(chunksFiber)
 			const markers = Chunk.toReadonlyArray(chunks).map(decodeFrameMarker)
@@ -267,7 +270,7 @@ describe("RadioStream", () => {
 
 				const streamFiber = yield* Effect.fork(Stream.runDrain(Stream.take(encoded.stream, 10_000)))
 
-				yield* TestClock.adjust(FRAME_DURATION_MS * 2)
+				yield* TestClock.adjust(frameDurationMillis(2))
 
 				const activeBeforeInterrupt = yield* Metric.value(
 					radioMetric(radioListenerConnectionsActive, radioId),

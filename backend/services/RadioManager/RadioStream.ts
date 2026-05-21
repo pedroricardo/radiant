@@ -13,6 +13,7 @@ import {
 	Ref,
 	Scope,
 	Stream,
+	Chunk,
 } from "effect"
 import type { Radio } from "../../lib"
 import * as AudioSource from "../../lib/AudioSource"
@@ -50,10 +51,10 @@ class RadioStream extends Data.TaggedClass("RadioStream")<{
 	readonly playoutManagerFiber: Fiber.RuntimeFiber<void, RadioStreamError>
 }> {}
 
-const TARGET_CLIENT_BUFFER: Duration.DurationInput = "30 seconds"
+const TARGET_CLIENT_DELAY: Duration.DurationInput = "1 second"
 
 const frameBufferCapacityFrom = (frameDurationMs: number): number =>
-	Math.max(1, Math.ceil(Duration.toMillis(TARGET_CLIENT_BUFFER) / frameDurationMs))
+	Math.max(1, Math.ceil(Duration.toMillis(TARGET_CLIENT_DELAY) / frameDurationMs))
 
 const appendFrameWindow = (
 	frameWindow: ReadonlyArray<Float32Array>,
@@ -74,8 +75,8 @@ const appendFrameWindow = (
 /**
  * Builds the shared PCM runtime for one radio.
  *
- * This is the layer that turns the `AudioMultiplexer` from a plain frame source
- * into a hot, time-aware radio stream with bounded buffering semantics.
+ * This turns the shared `AudioMultiplexer` into a clock-paced radio stream with
+ * a bounded rolling cache of the recent past.
  *
  * Why this exists:
  *
@@ -84,8 +85,8 @@ const appendFrameWindow = (
  *   produce frames as fast as the CPU allows.
  * - The listeners should not pull the multiplexer directly, because each slow
  *   client would then distort timing or force us into unbounded buffering.
- * - The radio needs one shared clock and one shared cache, then each listener
- *   should attach to that shared runtime with its own bounded queue.
+ * - The radio needs one shared clock and one shared cache of the recent past,
+ *   then each listener should attach to that runtime with its own bounded queue.
  *
  * High-level shape:
  *
@@ -98,16 +99,15 @@ const appendFrameWindow = (
  *      +---------------------+
  *      | producer fiber      |
  *      | - pulls PCM frames  |
- *      | - tracks wall time  |
- *      | - bursts up to 30s  |
- *      | - then paces itself |
+ *      | - follows wall time |
+ *      | - 1 frame per tick  |
  *      +----------+----------+
  *                 |
  *                 | publish(frame)
  *                 v
  *      +-----------------------------+
  *      | RadioStream state           |
- *      | - frameWindow: last ~30s    |
+ *      | - frameWindow: last ~1s     |
  *      | - subscribers: Map<id, q>   |
  *      +-------------+---------------+
  *                    |
@@ -126,24 +126,23 @@ const appendFrameWindow = (
  *
  * Timing model:
  *
- * - We measure how much audio has been produced in milliseconds:
- *   `framesProduced * frameDurationMs`.
- * - We compare that to wall clock time since the producer started.
- * - While the producer is less than 30 seconds ahead, it keeps filling the
- *   shared cache as fast as possible.
- * - Once it gets more than 30 seconds ahead, it sleeps just enough to stay near
- *   that target window.
+ * - The producer is paced by wall clock time from the moment the radio starts.
+ * - On each frame boundary, it pulls exactly one PCM frame from the multiplexer
+ *   and publishes it.
+ * - The shared `frameWindow` keeps only a bounded history of the recent past.
+ * - A new listener is seeded with that history first, then continues receiving
+ *   live frames as they are published.
  *
- * The result is deliberate:
+ * The important consequence is:
  *
- * - A fresh listener can join and immediately receive buffered audio.
- * - The radio maintains a stable cache horizon instead of growing forever.
- * - The multiplexer is consumed once per radio, not once per client.
+ * - the playout clock and the radio stream clock stay aligned
+ * - listeners hear a small fixed delay from the recent past
+ * - we never render "future audio" that would delay `setCluster` changes
  *
  * Buffering model:
  *
  * - `frameWindow` is the shared rolling cache for the radio. It stores the most
- *   recent frames up to the 30-second capacity.
+ *   recent frames up to the target delay capacity.
  * - Each listener gets its own `Queue.sliding(capacity)`.
  * - On subscribe, we first snapshot `frameWindow`, enqueue that snapshot into
  *   the listener queue, and only then expose `Stream.fromQueue(queue)`.
@@ -166,26 +165,23 @@ const appendFrameWindow = (
  *
  * 1. `makeRuntime` receives one `AudioMultiplexer` instance for one radio.
  * 2. It derives the frame duration from `sampleRate` and `frameSamples`, then
- *    converts the fixed 30-second target into a frame capacity.
+ *    converts the fixed target delay into a frame capacity.
  * 3. It allocates `stateRef`, which holds:
  *    - `frameWindow`: the shared rolling PCM cache
  *    - `subscribers`: the active listener queues
  *    - `nextSubscriberId`: a simple counter for stable map keys
  * 4. It starts the producer fiber.
- * 5. The producer pulls one frame from `multiplexer.outputUnsafe`.
- * 6. That frame is appended to `frameWindow`, trimming the oldest frame if the
+ * 5. The producer waits for the next frame deadline in wall-clock time.
+ * 6. It pulls one frame from `multiplexer.outputUnsafe`.
+ * 7. That frame is appended to `frameWindow`, trimming the oldest frame if the
  *    window is already full.
- * 7. The same frame is offered to every active subscriber queue.
- * 8. The producer updates its notion of "audio time produced" and compares it
- *    with wall clock time.
- * 9. If the producer is more than 30 seconds ahead, it sleeps; otherwise it
- *    keeps pulling immediately.
- * 10. A new listener subscribes by creating a fresh sliding queue.
- * 11. During subscription, the runtime snapshots the current `frameWindow`,
+ * 8. The same frame is offered to every active subscriber queue.
+ * 9. A new listener subscribes by creating a fresh sliding queue.
+ * 10. During subscription, the runtime snapshots the current `frameWindow`,
  *     registers the queue in `subscribers`, and seeds that queue with the
  *     snapshot.
- * 12. From that point on, the listener receives:
- *     - the buffered frames from the snapshot
+ * 11. From that point on, the listener receives:
+ *     - the buffered frames from the recent-past snapshot
  *     - then the new live frames published by the producer
  *
  * How state moves over time:
@@ -194,24 +190,24 @@ const appendFrameWindow = (
  * t0: radio starts
  *     frameWindow = []
  *     subscribers = {}
- *     producer begins pulling as fast as possible
+ *     producer begins emitting on each real-time frame boundary
  *
- * t1: warmup / burst phase
+ * t1: first second
  *     frameWindow grows: [f0, f1, f2, ...]
- *     producer stays ahead of wall clock until ~30s of audio are cached
+ *     this becomes the bounded recent-past cache
  *
  * t2: steady-state phase
  *     frameWindow is full
  *     on each new frame:
  *       drop oldest frame
  *       append newest frame
- *     window becomes a moving 30s slice:
- *       [f1200 ... f2350] -> [f1201 ... f2351] -> ...
+ *     window becomes a moving 1s slice of the past:
+ *       [f1200 ... f1238] -> [f1201 ... f1239] -> ...
  *
  * t3: listener joins late
  *     queueA is created
- *     queueA is seeded with the current 30s window
- *     listener starts slightly behind the live edge, but with safe buffer
+ *     queueA is seeded with the current cached past window
+ *     listener starts a small fixed delay behind the live edge
  *
  * t4: listener is slow
  *     queueA reaches capacity
@@ -226,7 +222,7 @@ const appendFrameWindow = (
  *
  * The important distinction is:
  *
- * - `frameWindow` is the radio-level shared cache.
+ * - `frameWindow` is the radio-level shared cache of recent past frames.
  * - subscriber queues are per-listener delivery buffers.
  *
  * The shared cache answers "what should a new listener hear immediately?".
@@ -234,7 +230,7 @@ const appendFrameWindow = (
  * the live producer without unbounded memory growth?".
  *
  * In short: `makeRuntime` is the place where "a sequence of PCM frames" becomes
- * "a real-time shared radio stream with a 30-second cache and bounded
+ * "a real-time shared radio stream with a bounded recent-past cache and bounded
  * per-listener backpressure".
  */
 const makeRuntime = (
@@ -245,8 +241,7 @@ const makeRuntime = (
 		const { channels, frameSamples, sampleRate } = multiplexer.config
 		const frameDurationMs = (frameSamples / sampleRate) * 1_000
 		const frameBufferCapacity = frameBufferCapacityFrom(frameDurationMs)
-		const targetBufferMs = Duration.toMillis(TARGET_CLIENT_BUFFER)
-		const warmupLoggedRef = yield* Ref.make(false)
+		const targetDelayMs = Duration.toMillis(TARGET_CLIENT_DELAY)
 
 		const stateRef = yield* Ref.make<RadioStreamState>({
 			nextSubscriberId: 0,
@@ -280,48 +275,50 @@ const makeRuntime = (
 				)
 			}
 			const startedAt = yield* Clock.currentTimeMillis
-			const framesProducedRef = yield* Ref.make(0)
+			const pull = yield* Stream.toPull(multiplexer.outputUnsafe)
+			const pendingFramesRef = yield* Ref.make<ReadonlyArray<Float32Array>>([])
 			yield* Effect.logInfo("radio_stream.producer_started").pipe(
 				Effect.annotateLogs({
 					sampleRate,
 					channels,
 					frameSamples,
 					frameBufferCapacity,
-					targetBufferMs,
+					targetDelayMs,
 				}),
 			)
 
-			yield* multiplexer.outputUnsafe.pipe(
-				Stream.runForEachScoped((frame) =>
-					Effect.gen(function* () {
-						yield* publishFrame(frame)
+			const nextFrame = Effect.gen(function* () {
+				const pendingFrames = yield* Ref.get(pendingFramesRef)
+				if (pendingFrames.length > 0) {
+					const [frame, ...rest] = pendingFrames
+					yield* Ref.set(pendingFramesRef, rest)
+					if (frame != null) {
+						return frame
+					}
+				}
 
-						const framesProduced = yield* Ref.updateAndGet(framesProducedRef, (count) => count + 1)
-						const producedAudioMs = framesProduced * frameDurationMs
-						const elapsedMs = (yield* Clock.currentTimeMillis) - startedAt
-						const aheadMs = producedAudioMs - elapsedMs
-						if (aheadMs >= targetBufferMs) {
-							const shouldLogWarmup = yield* Ref.getAndSet(warmupLoggedRef, true).pipe(
-								Effect.map((alreadyLogged) => !alreadyLogged),
-							)
-							if (shouldLogWarmup) {
-								yield* Effect.logInfo("radio_stream.warmup_completed").pipe(
-									Effect.annotateLogs({
-										framesProduced,
-										producedAudioMs,
-										elapsedMs,
-										aheadMs,
-									}),
-								)
-							}
-						}
+				const pulled = yield* pull
+				const frames = Chunk.toReadonlyArray(pulled)
+				const [frame, ...rest] = frames
+				if (frame == null) {
+					return yield* Effect.dieMessage("audio multiplexer produced an empty frame chunk")
+				}
+				yield* Ref.set(pendingFramesRef, rest)
+				return frame
+			})
 
-						if (aheadMs > targetBufferMs) {
-							yield* Effect.sleep(Duration.millis(aheadMs - targetBufferMs))
-						}
-					}),
-				),
-			)
+			let frameIndex = 0
+			while (true) {
+				const deadlineMs = startedAt + frameIndex * frameDurationMs
+				const nowMs = yield* Clock.currentTimeMillis
+				if (deadlineMs > nowMs) {
+					yield* Effect.sleep(Duration.millis(deadlineMs - nowMs))
+				}
+
+				const frame = yield* nextFrame
+				yield* publishFrame(frame)
+				frameIndex += 1
+			}
 		}).pipe(
 			Effect.onExit((exit) =>
 				Effect.logDebug("radio_stream.producer_exit").pipe(
@@ -398,6 +395,7 @@ const makeRuntime = (
 						subscriberId,
 						replayedFrames: frameWindow.length,
 						frameBufferCapacity,
+						targetDelayMs,
 					}),
 				)
 				if (options?.radioId != null) {
