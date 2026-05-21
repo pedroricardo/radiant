@@ -11,12 +11,18 @@ import {
 	Stream,
 	TestClock,
 } from "effect"
+import { BunContext } from "@effect/platform-bun"
 import { it } from "../../bun-test-effect"
 import type { Radio } from "../../lib"
 import * as AudioSource from "../../lib/AudioSource"
+import { makeUnimplementedServiceLayer } from "../../test/support/unimplementedService"
 import { AudioMultiplexer } from "../AudioMultiplexer"
+import { Drizzle } from "../Drizzle"
 import { IcyEncoder as IcyEncoderService } from "../IcyEncoder"
+import { MediaLibraryService } from "../MediaLibraryService"
 import { PlayoutManager } from "../PlayoutManager"
+import { RadioRepository } from "./RadioRepository"
+import { StorageService } from "../StorageService"
 import { radioListenerConnectionsActive, radioMetric } from "./metrics"
 import { RadioManagerConfig } from "./RadioManagerConfig"
 import * as RadioStream from "./RadioStream"
@@ -280,28 +286,29 @@ describe("RadioStream", () => {
 		Effect.gen(function* () {
 			const frameValueRef = yield* Ref.make(0)
 			const syncCallsRef = yield* Ref.make(0)
+			const fakePlayoutManager = PlayoutManager.make({
+				syncNow: (_radioId, multiplexer) =>
+					syncMultiplexerToRealAudio(multiplexer).pipe(Effect.as(Option.none<DateTime.Zoned>())),
+				takeover: (_radioId, multiplexer, options) =>
+					Ref.update(syncCallsRef, (count) => count + 1).pipe(
+						Effect.zipRight(syncMultiplexerToRealAudio(multiplexer)),
+						Effect.zipRight(options?.readyLatch?.open ?? Effect.void),
+						Effect.zipRight(Effect.never),
+					),
+			})
 
 			const radioStream = yield* RadioStream.startRadio("radio_1" as Radio.RadioId).pipe(
+				Effect.provideService(RadioManagerConfig, {
+					audioMultiplexerLayer: makeFakeMultiplexerServiceLayer(frameValueRef),
+				}),
+				Effect.provideService(PlayoutManager, fakePlayoutManager),
 				Effect.provide(
 					Layer.mergeAll(
-						Layer.succeed(RadioManagerConfig, {
-							audioMultiplexerLayer: makeFakeMultiplexerServiceLayer(frameValueRef),
-						}),
-						Layer.succeed(
-							PlayoutManager,
-							PlayoutManager.make({
-								syncNow: (_radioId, multiplexer) =>
-									syncMultiplexerToRealAudio(multiplexer).pipe(
-										Effect.as(Option.none<DateTime.Zoned>()),
-									),
-								takeover: (_radioId, multiplexer, options) =>
-									Ref.update(syncCallsRef, (count) => count + 1).pipe(
-										Effect.zipRight(syncMultiplexerToRealAudio(multiplexer)),
-										Effect.zipRight(options?.readyLatch?.open ?? Effect.void),
-										Effect.zipRight(Effect.never),
-									),
-							}),
-						),
+						BunContext.layer,
+						makeUnimplementedServiceLayer(MediaLibraryService),
+						makeUnimplementedServiceLayer(RadioRepository),
+						makeUnimplementedServiceLayer(Drizzle),
+						makeUnimplementedServiceLayer(StorageService),
 					),
 				),
 			)

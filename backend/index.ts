@@ -19,7 +19,9 @@ export const RadiantApiImpl = HttpApiBuilder.api(RadiantClient.ApiContract.httpA
 	Layer.provide(radioGroupLive),
 	Layer.provide(mediaLibraryGroupLive),
 	Layer.provide(AuthorizationLive),
-	Layer.merge(Layer.mergeAll(HttpServer.layerContext, Router.Live, Middleware.layer)),
+	Layer.provideMerge(HttpServer.layerContext),
+	Layer.provideMerge(Router.Live),
+	Layer.provideMerge(Middleware.layer),
 )
 const apiLive = RadiantApiImpl.pipe(Layer.provide(ProductionLayer))
 const swaggerLive = HttpApiSwagger.layer({ path: "/api/docs" }).pipe(Layer.provide(apiLive))

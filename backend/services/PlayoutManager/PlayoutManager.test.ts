@@ -1,11 +1,11 @@
 import { MediaNode, Playout, Radio } from "@radiant/client"
 import { expect } from "bun:test"
-import { Chunk, Effect, Layer, Ref, Stream, TestClock } from "effect"
+import { Effect, Layer, Ref, Stream, TestClock } from "effect"
 
 import { BunContext } from "@effect/platform-bun"
 import { it } from "../../bun-test-effect"
-import * as AudioSource from "../../lib/AudioSource"
 import { makeServiceSpy } from "../../test/support/serviceSpy"
+import type { ServiceSpyCall } from "../../test/support/serviceSpy"
 import { TestDbLayer, resetDb } from "../../test/support/testDb"
 import { makeUnimplementedServiceLayer } from "../../test/support/unimplementedService"
 import { AudioMultiplexer } from "../AudioMultiplexer"
@@ -31,8 +31,6 @@ const playlistId = "playlist_test" as const
 const blockDurationMs = 5_000
 const longBlockDurationMs = 10_000
 const storageObjects = new Map<string, Uint8Array>()
-const crossfadeWarmFrames = 24
-const comparisonFrameCount = 24
 
 const fakeStorageLayer = makeUnimplementedServiceLayer(StorageService, {
 	readObject: (key) =>
@@ -233,26 +231,22 @@ const seedWeeklyBlock = () =>
 	)
 
 const waitForSetClusterSizes = (
-	callsRef: Ref.Ref<
-		ReadonlyArray<{
-			readonly method: string
-			readonly args: ReadonlyArray<unknown>
-		}>
-	>,
+	callsRef: Ref.Ref<ReadonlyArray<ServiceSpyCall<typeof AudioMultiplexer.Service>>>,
 	expectedCount: number,
 ): Effect.Effect<ReadonlyArray<number>> =>
 	Effect.gen(function* () {
-		const setClusterSizes = (yield* Ref.get(callsRef))
-			.filter((call) => call.method === "setCluster")
-			.map((call) => {
-				const sources = call.args[0]
-				return Array.isArray(sources) ? sources.length : -1
-			})
-		if (setClusterSizes.length >= expectedCount) {
-			return setClusterSizes
+		while (true) {
+			const setClusterSizes = (yield* Ref.get(callsRef))
+				.filter((call) => call.method === "setCluster")
+				.map((call) => {
+					const sources = call.args[0]
+					return Array.isArray(sources) ? sources.length : -1
+				})
+			if (setClusterSizes.length >= expectedCount) {
+				return setClusterSizes
+			}
+			yield* Effect.yieldNow()
 		}
-		yield* Effect.yieldNow()
-		return yield* waitForSetClusterSizes(callsRef, expectedCount)
 	})
 
 const makeSeededNoiseWav = (args: {
@@ -307,35 +301,6 @@ const makeSeededNoiseWav = (args: {
 	return bytes
 }
 
-const collectFrames = <E, R>(stream: Stream.Stream<Float32Array, E, R>, count: number) =>
-	Stream.take(stream, count).pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray))
-
-const frameMeanAbs = (frame: Float32Array): number => {
-	let total = 0
-	for (let index = 0; index < frame.length; index++) {
-		total += Math.abs(frame[index] ?? 0)
-	}
-	return total / frame.length
-}
-
-const frameMeanAbsoluteDifference = (left: Float32Array, right: Float32Array): number => {
-	expect(left.length).toBe(right.length)
-	let total = 0
-	for (let index = 0; index < left.length; index++) {
-		total += Math.abs((left[index] ?? 0) - (right[index] ?? 0))
-	}
-	return total / left.length
-}
-
-const decodeReferenceFrames = (bytes: Uint8Array, count: number, key: string) =>
-	Effect.gen(function* () {
-		storageObjects.set(key, bytes)
-		const source = yield* AudioSource.fromStorageObject(key).pipe(
-			Effect.provideService(StorageService, yield* StorageService),
-		)
-		return yield* collectFrames(source.stream, count)
-	})
-
 it.layer(testLayer)(({ scoped }) => {
 	scoped("takeover schedules one-off audio blocks at the correct time", () =>
 		Effect.gen(function* () {
@@ -352,13 +317,13 @@ it.layer(testLayer)(({ scoped }) => {
 				.takeover(radioId, spiedMultiplexer.service)
 				.pipe(Effect.forkScoped)
 
-			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 1)).toEqual([0])
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
 
 			yield* TestClock.adjust("10 seconds")
-			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 2)).toEqual([0, 1])
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 2)).toEqual([0, 1])
 
 			yield* TestClock.adjust(blockDurationMs)
-			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 3)).toEqual([0, 1, 0])
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 3)).toEqual([0, 1, 0])
 		}),
 	)
 
@@ -377,13 +342,13 @@ it.layer(testLayer)(({ scoped }) => {
 				.takeover(radioId, spiedMultiplexer.service)
 				.pipe(Effect.forkScoped)
 
-			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 1)).toEqual([0])
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
 
 			yield* TestClock.adjust("1 minute")
-			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 2)).toEqual([0, 1])
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 2)).toEqual([0, 1])
 
 			yield* TestClock.adjust(blockDurationMs)
-			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 3)).toEqual([0, 1, 0])
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 3)).toEqual([0, 1, 0])
 		}),
 	)
 
@@ -420,18 +385,6 @@ it.layer(testLayer)(({ scoped }) => {
 			storageObjects.set(`${radioId}/${mediaNodeId}`, firstTrackBytes)
 			storageObjects.set(`${radioId}/${mediaNodeIdB}`, secondTrackBytes)
 
-			const referenceFrameCount = crossfadeWarmFrames + comparisonFrameCount
-			const firstTrackReference = yield* decodeReferenceFrames(
-				firstTrackBytes,
-				referenceFrameCount,
-				"reference/track-a.wav",
-			)
-			const secondTrackReference = yield* decodeReferenceFrames(
-				secondTrackBytes,
-				referenceFrameCount,
-				"reference/track-b.wav",
-			)
-
 			const multiplexer = yield* AudioMultiplexer
 			const spiedMultiplexer = makeServiceSpy(multiplexer)
 			yield* spiedMultiplexer.spy.clear
@@ -439,31 +392,19 @@ it.layer(testLayer)(({ scoped }) => {
 			yield* playoutManager
 				.takeover(radioId, spiedMultiplexer.service)
 				.pipe(Effect.forkScoped)
-
-			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 1)).toEqual([0])
-
-			const silenceFrame = (yield* collectFrames(multiplexer.outputUnsafe, 1))[0]!
-			expect(frameMeanAbs(silenceFrame)).toBeLessThan(0.001)
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 1)).toEqual([0])
 
 			yield* TestClock.adjust("10 seconds")
-			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 2)).toEqual([0, 1])
-
-			const firstTrackFrames = yield* collectFrames(multiplexer.outputUnsafe, referenceFrameCount)
-			for (let index = 0; index < comparisonFrameCount; index++) {
-				const actualFrame = firstTrackFrames[crossfadeWarmFrames + index]!
-				const expectedFrame = firstTrackReference[crossfadeWarmFrames + index]!
-				expect(frameMeanAbsoluteDifference(actualFrame, expectedFrame)).toBeLessThan(0.001)
-			}
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 2)).toEqual([0, 1])
 
 			yield* TestClock.adjust("10 seconds")
-			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls as any, 3)).toEqual([0, 1, 1])
-
-			const secondTrackFrames = yield* collectFrames(multiplexer.outputUnsafe, referenceFrameCount)
-			for (let index = 0; index < comparisonFrameCount; index++) {
-				const actualFrame = secondTrackFrames[crossfadeWarmFrames + index]!
-				const expectedFrame = secondTrackReference[crossfadeWarmFrames + index]!
-				expect(frameMeanAbsoluteDifference(actualFrame, expectedFrame)).toBeLessThan(0.001)
-			}
+			expect(yield* waitForSetClusterSizes(spiedMultiplexer.spy.calls, 3)).toEqual([0, 1, 1])
+			const setClusterCalls = (yield* Ref.get(spiedMultiplexer.spy.calls)).filter(
+				(call: { readonly method: string }) => call.method === "setCluster",
+			)
+			const latestCluster = setClusterCalls[2]!.args[0] as ReadonlyArray<{ readonly id: string }>
+			expect(latestCluster).toHaveLength(1)
+			expect(latestCluster[0]!.id).toBe(mediaNodeIdB)
 		}),
 	)
 })

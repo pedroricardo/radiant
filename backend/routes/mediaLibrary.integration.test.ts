@@ -1,6 +1,7 @@
 import * as RadiantClient from "@radiant/client"
 import { expect } from "bun:test"
 import { Effect, Layer, Stream } from "effect"
+import { BunContext } from "@effect/platform-bun"
 
 import { RadiantApiImpl } from ".."
 import { it } from "../bun-test-effect"
@@ -65,11 +66,7 @@ const storageLayer = Layer.succeed(StorageService.StorageService, {
 		}),
 })
 const metadataExtractionLayer = Layer.succeed(MetadataExtractionService.MetadataExtractionService, {
-	extractAudioMetadata: (args: {
-		readonly name: string
-		readonly contentType?: string | undefined
-		readonly content: Stream.Stream<Uint8Array, unknown>
-	}) =>
+	extractAudioMetadata: (args) =>
 		Stream.runDrain(args.content).pipe(
 			Effect.mapError(
 				(cause) =>
@@ -188,6 +185,7 @@ it.layer(
 				dbLayer,
 			),
 		),
+		Layer.provideMerge(BunContext.layer),
 	),
 )(({ scoped }) => {
 	scoped("MediaLibrary API works in-process through RadiantClient", () =>
