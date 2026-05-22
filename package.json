@@ -11,7 +11,7 @@
 	"scripts": {
 		"add-test-migration": "bun --env-file=radiant-frontend/.env --bun drizzle-kit generate --config backend/drizzle.config.ts",
 		"db:push": "bun --env-file=radiant-frontend/.env --bun drizzle-kit push --config backend/drizzle.config.ts",
-		"build": "bun run --cwd radiant-frontend build",
+		"build": "cd radiant-frontend && npm run build",
 		"cli": "bun --cwd=radiant-cli run radiant",
 		"dev": "bun run --cwd radiant-frontend dev",
 		"start": "bun run --cwd radiant-frontend start",

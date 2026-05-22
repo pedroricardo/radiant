@@ -4,7 +4,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "NEXT_MANUAL_SIG_HANDLE=true bun --bun next dev",
-		"build": "NEXT_MANUAL_SIG_HANDLE=true bun next build",
+		"build": "NEXT_MANUAL_SIG_HANDLE=true next build",
 		"start": "NEXT_MANUAL_SIG_HANDLE=true bun --bun next start",
 		"typecheck": "bunx next typegen . && bunx tsc --noEmit -p tsconfig.json"
 	},
