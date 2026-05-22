@@ -12,3 +12,4 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=8080
 EXPOSE 8080
 
+CMD ["bash", "-c", "bun run discloud:start"]
