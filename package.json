@@ -19,7 +19,7 @@
 		"typecheck:backend": "bunx tsc --noEmit -p backend/tsconfig.json",
 		"typecheck:cli": "bun run --cwd radiant-cli typecheck",
 		"typecheck:frontend": "bun run --cwd radiant-frontend typecheck",
-		"discloud:start": "bun install && bun run build && bun start"
+		"discloud:start": "bun start || cat"
 	},
 	"devDependencies": {
 		"drizzle-kit": "^0.31.9",
