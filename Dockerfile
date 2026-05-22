@@ -3,7 +3,7 @@ FROM docker.io/oven/bun:1.3.13
 WORKDIR /home/discloud
 
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends ffmpeg \
+	&& apt-get install -y --no-install-recommends ffmpeg nodejs \
 	&& rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
