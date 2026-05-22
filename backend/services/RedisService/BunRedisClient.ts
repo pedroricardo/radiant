@@ -1,8 +1,7 @@
-import { RedisClient } from "bun"
 import { Context, Effect, Layer, Scope } from "effect"
 import { RedisServiceConfig } from "./RedisConfig"
 import { RedisServiceError, redisServiceError } from "./RedisErrors"
-
+type RedisClient = Bun.RedisClient;
 export interface BunRedisClientShape {
 	readonly commandClient: RedisClient
 	readonly duplicateConnectedClient: () => Effect.Effect<RedisClient, RedisServiceError, Scope.Scope>
@@ -36,7 +35,7 @@ export const layer = Layer.scoped(
 	BunRedisClient,
 	Effect.gen(function*() {
 		const config = yield* RedisServiceConfig
-		const commandClient = yield* connectClient(new RedisClient(config.url, config.options))
+		const commandClient = yield* connectClient(new Bun.RedisClient(config.url, config.options))
 
 		yield* Effect.addFinalizer(() => Effect.sync(() => commandClient.close()))
 
