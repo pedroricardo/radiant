@@ -1,5 +1,5 @@
 import { RadiantClient } from "@radiant/client"
-import { Effect, Option } from "effect"
+import { Option } from "effect"
 import Image from "next/image"
 import { redirect } from "next/navigation"
 
@@ -31,9 +31,7 @@ function getOAuthProviders() {
 }
 
 export default async function LoginPage() {
-	const [currentUser, providers] = await runServerEffect(
-		Effect.all([getCurrentUser(), getOAuthProviders()], { concurrency: "unbounded" }),
-	)
+	const [currentUser, providers] = await Promise.all([getCurrentUser(), runServerEffect(getOAuthProviders())])
 	if (Option.isSome(currentUser)) {
 		redirect("/dashboard")
 	}

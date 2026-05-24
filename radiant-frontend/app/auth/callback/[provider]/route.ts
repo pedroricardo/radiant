@@ -1,4 +1,3 @@
-import { webHandler } from "@radiant/backend"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -20,7 +19,7 @@ export const GET = async (request: Request) => {
 		request.url,
 	)
 
-	const response = await webHandler.handler(new Request(targetUrl, request))
+	const response = await globalWebHandler.handler(new Request(targetUrl, request))
 	if (!response.ok) {
 		return response
 	}

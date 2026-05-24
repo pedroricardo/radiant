@@ -24,22 +24,15 @@ const apiLive = RadiantApiImpl.pipe(Layer.provide(ProductionLayer))
 const swaggerLive = HttpApiSwagger.layer({ path: "/api/docs" }).pipe(Layer.provide(apiLive))
 const RadiantApiLiveHttpServer = Layer.mergeAll(apiLive, swaggerLive)
 export const RadiantApiLiveHttpServerRuntime = ManagedRuntime.make(RadiantApiLiveHttpServer)
-export const webHandler = {
-	handler: async (req: Request) => {
-		const r = await webHandler.runtime.runtime()
-		return HttpApp.toWebHandlerRuntime(r)(
-			await HttpApiBuilder.httpApp.pipe(Effect.provide(webHandler.runtime), Effect.runPromise),
-		)(req)
-	},
-	dispose: RadiantApiLiveHttpServerRuntime.dispose,
-	runtime: RadiantApiLiveHttpServerRuntime,
+declare global {
+	var globalWebHandler: {handler: (req: Request) => Promise<Response>, dispose: () => Promise<void>, runtime: Awaited<ReturnType<typeof RadiantApiLiveHttpServerRuntime.runtime>>, disposed: boolean}
 }
 
 export const inProcessApiClient = async (headers: () => Promise<Headers>) => {
 	const _headers = await headers()
 	return RadiantClient.withHandler(
 		async (r) =>
-			await webHandler.handler(
+			await globalWebHandler.handler(
 				new Request(r, {
 					headers: _headers,
 				}),

@@ -1,4 +1,4 @@
-import { webHandler } from "@radiant/backend"
+
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -14,7 +14,7 @@ export const GET = async (request: Request) => {
 		return new Response("Missing OAuth provider", { status: 400 })
 	}
 
-	const response = await webHandler.handler(
+	const response = await globalWebHandler.handler(
 		new Request(
 			new URL(`/api/auth/oauth/${encodeURIComponent(provider)}/url`, request.url),
 			request,

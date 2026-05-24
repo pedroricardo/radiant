@@ -1,8 +1,7 @@
-import { webHandler } from "@radiant/backend"
 
 export const runtime = "nodejs"
 
-const forwardToBackend = async (request: Request) => webHandler.handler(request)
+const forwardToBackend = async (request: Request) => globalWebHandler.handler(request)
 
 export const GET = forwardToBackend
 export const POST = forwardToBackend

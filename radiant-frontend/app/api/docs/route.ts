@@ -1,9 +1,8 @@
-import { webHandler } from "@radiant/backend"
 
 export const runtime = "nodejs"
 
 export const GET = async (request: Request) => {
-	const response = await webHandler.handler(new Request(new URL("/api/docs", request.url), request))
+	const response = await globalWebHandler.handler(new Request(new URL("/api/docs", request.url), request))
 	const headers = new Headers(response.headers)
 
 	// Swagger UI is effectively static for a deployed backend version, so cache it aggressively

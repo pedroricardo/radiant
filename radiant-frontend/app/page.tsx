@@ -11,7 +11,10 @@ import { Badge } from "./components/ui/Badge"
 import { Button } from "./components/ui/Button"
 import { getCurrentUser } from "./lib/auth"
 import { groteskFont } from "./lib/fonts"
-import { runServerEffect } from "./lib/serverApiClient"
+
+type LayoutProps = PropsWithChildren<{
+	user: Awaited<ReturnType<typeof getCurrentUser>>
+}>
 
 function LoginButton() {
 	return (
@@ -23,8 +26,7 @@ function LoginButton() {
 	)
 }
 
-async function Layout(props: PropsWithChildren) {
-	const user = await runServerEffect(getCurrentUser())
+async function Layout({ user, children }: LayoutProps) {
 	return (
 		<div className="container mx-auto">
 			<nav className="bg-white m-3 shadow-neo-panel border-3 border-neo-black select-none">
@@ -48,15 +50,15 @@ async function Layout(props: PropsWithChildren) {
 					})}
 				</div>
 			</nav>
-			{props.children}
+			{children}
 		</div>
 	)
 }
 export default async function Home() {
-	const user = await runServerEffect(getCurrentUser())
+	const user = await getCurrentUser()
 
 	return (
-		<Layout>
+		<Layout user={user}>
 			<main className="shadow-neo-panel bg-white m-3 mt-6 border-neo-black border-3 min-h-screen">
 				<section className="flex min-h-[90vh] flex-col 2xl:grid 2xl:grid-cols-2">
 					<div className="border-b-3 border-neo-black p-6 text-neo-black sm:p-8 2xl:flex 2xl:flex-col 2xl:justify-center 2xl:border-b-0 2xl:border-r-3 2xl:p-12">

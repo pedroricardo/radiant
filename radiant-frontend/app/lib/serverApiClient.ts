@@ -1,6 +1,6 @@
 import { inProcessApiClient, RadiantApiLiveHttpServerRuntime } from "@radiant/backend"
 import { RadiantClient } from "@radiant/client"
-import { Effect } from "effect"
+import { Effect, Runtime } from "effect"
 import { ManagedRuntime } from "effect/ManagedRuntime"
 import { headers } from "next/headers"
 
@@ -52,6 +52,6 @@ type RuntimeServices =
 export const runServerEffect = async <A, E>(
 	e: Effect.Effect<A, E, RuntimeServices | RadiantClient>,
 ) =>
-	RadiantApiLiveHttpServerRuntime.runPromise(
+	Runtime.runPromise(globalWebHandler.runtime)(
 		e.pipe(Effect.provide(await inProcessApiClient(async () => new Headers(await headers())))),
 	)
