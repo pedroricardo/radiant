@@ -2,6 +2,7 @@
 
 import { useAtomSet } from "@effect-atom/atom-react"
 import { Exit } from "effect"
+import { useTranslations } from "next-intl"
 import { useId, useState } from "react"
 
 import { createRadioAtom, radioListReactivityKey } from "../../lib/atoms/radiantClient"
@@ -45,6 +46,7 @@ type CreateRadioDialogProps = {
 }
 
 export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
+	const t = useTranslations("createRadio")
 	const createRadio = useAtomSet(createRadioAtom, { mode: "promiseExit" })
 	const availableTimezones = getAvailableTimezones()
 
@@ -84,7 +86,7 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 		const trimmedDescription = description.trim()
 
 		if (!trimmedName || !trimmedTimezone) {
-			setErrorMessage("Nome e timezone são obrigatórios.")
+			setErrorMessage(t("errors.required"))
 			return
 		}
 
@@ -109,7 +111,7 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 			return
 		}
 
-		setErrorMessage("Nao foi possivel criar a radio. Tenta novamente.")
+		setErrorMessage(t("errors.createFailed"))
 	}
 
 	return (
@@ -118,21 +120,20 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Criar radio</DialogTitle>
+					<DialogTitle>{t("title")}</DialogTitle>
 					<DialogDescription>
-						Define o nome e a configuracao base da estacao. Podes ajustar o resto depois no console
-						da radio.
+						{t("description")}
 					</DialogDescription>
 				</DialogHeader>
 
 				<form className="space-y-5" onSubmit={handleSubmit}>
 					<div className="space-y-2">
-						<Label htmlFor={nameId}>Nome</Label>
+						<Label htmlFor={nameId}>{t("fields.name.label")}</Label>
 						<Input
 							id={nameId}
 							value={name}
 							maxLength={120}
-							placeholder="Tokyo Hits"
+							placeholder={t("fields.name.placeholder")}
 							autoComplete="off"
 							disabled={isSubmitting}
 							onChange={(event) => setName(event.target.value)}
@@ -140,10 +141,10 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor={timezoneId}>Timezone</Label>
+						<Label htmlFor={timezoneId}>{t("fields.timezone.label")}</Label>
 						<Select value={timezone} disabled={isSubmitting} onValueChange={setTimezone}>
 							<SelectTrigger id={timezoneId}>
-								<SelectValue placeholder="Escolhe uma timezone" />
+								<SelectValue placeholder={t("fields.timezone.placeholder")} />
 							</SelectTrigger>
 
 							<SelectContent>
@@ -157,12 +158,12 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor={descriptionId}>Descricao</Label>
+						<Label htmlFor={descriptionId}>{t("fields.description.label")}</Label>
 						<Textarea
 							id={descriptionId}
 							value={description}
 							maxLength={2000}
-							placeholder="Uma breve nota editorial para identificar a estacao."
+							placeholder={t("fields.description.placeholder")}
 							disabled={isSubmitting}
 							onChange={(event) => setDescription(event.target.value)}
 						/>
@@ -171,10 +172,10 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 					<div className="flex items-center justify-between gap-4 border-3 border-neo-black bg-surface-muted px-4 py-3 shadow-neo-badge">
 						<div>
 							<div className="text-sm font-extrabold uppercase tracking-[0.16em] text-neo-black">
-								Radio publica
+								{t("fields.isPublic.label")}
 							</div>
 							<p className={`mt-1 text-sm text-black/65 ${groteskFont.className}`}>
-								Permite expor a estacao publicamente quando o stream estiver pronto.
+								{t("fields.isPublic.description")}
 							</p>
 						</div>
 
@@ -196,11 +197,11 @@ export function CreateRadioDialog({ trigger }: CreateRadioDialogProps) {
 							disabled={isSubmitting}
 							onClick={() => handleOpenChange(false)}
 						>
-							Cancelar
+							{t("actions.cancel")}
 						</Button>
 
 						<Button type="submit" variant="default" disabled={isSubmitting}>
-							{isSubmitting ? "A criar..." : "Criar radio"}
+							{isSubmitting ? t("actions.submitting") : t("actions.submit")}
 						</Button>
 					</DialogFooter>
 				</form>

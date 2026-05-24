@@ -1,5 +1,6 @@
 "use server"
 
+import { getTranslations } from "next-intl/server"
 import { Option } from "effect"
 import { PropsWithChildren } from "react"
 import matsuriCover from "./assets/まつり-foto.png"
@@ -14,19 +15,20 @@ import { groteskFont } from "./lib/fonts"
 
 type LayoutProps = PropsWithChildren<{
 	user: Awaited<ReturnType<typeof getCurrentUser>>
+	loginLabel: string
 }>
 
-function LoginButton() {
+function LoginButton(props: { label: string }) {
 	return (
 		<Button asChild variant="secondary" className="cursor-pointer">
 			<a href="/login" draggable={false}>
-				Stream now
+				{props.label}
 			</a>
 		</Button>
 	)
 }
 
-async function Layout({ user, children }: LayoutProps) {
+async function Layout({ user, children, loginLabel }: LayoutProps) {
 	return (
 		<div className="container mx-auto">
 			<nav className="bg-white m-3 shadow-neo-panel border-3 border-neo-black select-none">
@@ -46,7 +48,7 @@ async function Layout({ user, children }: LayoutProps) {
 								{user.username}
 							</div>
 						),
-						onNone: () => <LoginButton />,
+						onNone: () => <LoginButton label={loginLabel} />,
 					})}
 				</div>
 			</nav>
@@ -56,9 +58,10 @@ async function Layout({ user, children }: LayoutProps) {
 }
 export default async function Home() {
 	const user = await getCurrentUser()
+	const t = await getTranslations("home.nav")
 
 	return (
-		<Layout user={user}>
+		<Layout user={user} loginLabel={t("login")}>
 			<main className="shadow-neo-panel bg-white m-3 mt-6 border-neo-black border-3 min-h-screen">
 				<section className="flex min-h-[90vh] flex-col 2xl:grid 2xl:grid-cols-2">
 					<div className="border-b-3 border-neo-black p-6 text-neo-black sm:p-8 2xl:flex 2xl:flex-col 2xl:justify-center 2xl:border-b-0 2xl:border-r-3 2xl:p-12">

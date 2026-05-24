@@ -1,0 +1,96 @@
+{
+	"language": {
+		"label": "Idioma",
+		"pt": "Português",
+		"en": "Inglês"
+	},
+	"home": {
+		"nav": {
+			"login": "Entrar"
+		},
+		"hero": {
+			"title": "TOMA CONTA DO AR",
+			"line1": "Para de esperar que a estação certa apareça.",
+			"line2": "Cria a tua.",
+			"cta": "Começar"
+		},
+		"stats": {
+			"playoutLabel": "Playout",
+			"playoutValue": "Movido por calendário",
+			"licenceLabel": "Licença",
+			"outputLabel": "Saída",
+			"outputValue": "Pronto para ICY"
+		}
+	},
+	"login": {
+		"kicker": "Autenticação",
+		"title": "ENTRA NA ESTAÇÃO",
+		"description": "Entra com um fornecedor disponível para aceder às tuas rádios, dashboard e ferramentas de stream.",
+		"noProvidersTitle": "Nenhum fornecedor OAuth está ativo.",
+		"noProvidersDescription": "Ativa GitHub ou Discord na configuração do backend e esta página atualiza automaticamente.",
+		"continueWithGithub": "Continuar com GitHub",
+		"continueWithDiscord": "Continuar com Discord",
+		"continueWithProvider": "Continuar com {provider}",
+		"unknownProvider": "Outro"
+	},
+	"dashboard": {
+		"nav": {
+			"radios": "Rádios",
+			"settings": "Definições"
+		}
+	},
+	"dashboardPicker": {
+		"badge": "Dashboard",
+		"title": "Seleciona uma Rádio",
+		"description": "Escolhe uma estação para abrir o console, acompanhar a automação e gerir a library.",
+		"createRadio": "Criar rádio",
+		"empty": "Ainda não tens rádios. Cria a primeira estação para começar."
+	},
+	"createRadio": {
+		"title": "Criar rádio",
+		"description": "Define o nome e a configuração base da estação. Podes ajustar o resto depois no console da rádio.",
+		"fields": {
+			"name": {
+				"label": "Nome",
+				"placeholder": "Tokyo Hits"
+			},
+			"timezone": {
+				"label": "Timezone",
+				"placeholder": "Escolhe uma timezone"
+			},
+			"description": {
+				"label": "Descrição",
+				"placeholder": "Uma breve nota editorial para identificar a estação."
+			},
+			"isPublic": {
+				"label": "Rádio pública",
+				"description": "Permite expor a estação publicamente quando o stream estiver pronto."
+			}
+		},
+		"errors": {
+			"required": "Nome e timezone são obrigatórios.",
+			"createFailed": "Não foi possível criar a rádio. Tenta novamente."
+		},
+		"actions": {
+			"cancel": "Cancelar",
+			"submit": "Criar rádio",
+			"submitting": "A criar..."
+		}
+	},
+	"dashboardSettings": {
+		"kicker": "Definições",
+		"title": "Definições do workspace",
+		"description": "Esta área vai concentrar configuração da conta, preferências do dashboard e opções da estação."
+	},
+	"radio": {
+		"nav": {
+			"schedule": "Grelha",
+			"settings": "Definições da rádio"
+		}
+	},
+	"radioSettings": {
+		"kicker": "Definições da rádio",
+		"title": "Estação {radioId}",
+		"description": "Esta área vai concentrar as configurações específicas desta rádio."
+	}
+}

@@ -1,5 +1,6 @@
 import { RadiantClient } from "@radiant/client"
 import { Option } from "effect"
+import { getTranslations } from "next-intl/server"
 import Image from "next/image"
 import { redirect } from "next/navigation"
 
@@ -15,16 +16,14 @@ import { runServerEffect } from "../lib/serverApiClient"
 
 const providerMeta = {
 	github: {
-		label: "Continue with GitHub",
 		className: "bg-neo-paper !text-neo-black",
 		icon: githubIcon,
 	},
 	discord: {
-		label: "Continue with Discord",
 		className: "bg-[#5865F2] !text-white",
 		icon: discordIcon,
 	},
-} as const satisfies Record<string, { label: string; className: string; icon: typeof githubIcon }>
+} as const satisfies Record<string, { className: string; icon: typeof githubIcon }>
 
 function getOAuthProviders() {
 	return RadiantClient.use((client) => client.auth.listOAuthProviders())
@@ -32,6 +31,7 @@ function getOAuthProviders() {
 
 export default async function LoginPage() {
 	const [currentUser, providers] = await Promise.all([getCurrentUser(), runServerEffect(getOAuthProviders())])
+	const t = await getTranslations("login")
 	if (Option.isSome(currentUser)) {
 		redirect("/dashboard")
 	}
@@ -48,17 +48,17 @@ export default async function LoginPage() {
 						<p
 							className={`text-[10px] font-extrabold uppercase tracking-[0.26em] text-black/55 ${groteskFont.className}`}
 						>
-							Authentication
+							{t("kicker")}
 						</p>
 						<CardTitle
 							className={`${displayFont.className} mt-3 max-w-[7ch] text-[3.25rem] leading-[0.9] text-neo-black sm:text-[4.25rem]`}
 						>
-							JOIN THE STATION
+							{t("title")}
 						</CardTitle>
 						<CardDescription
 							className={`${groteskFont.className} mt-4 max-w-[34rem] text-base leading-7 text-black/75 sm:text-lg`}
 						>
-							Sign in with an available provider to access your radios, dashboard, and stream tools.
+							{t("description")}
 						</CardDescription>
 					</CardHeader>
 
@@ -69,17 +69,15 @@ export default async function LoginPage() {
 									<p
 										className={`${tomorrowFont.className} text-sm font-extrabold uppercase text-neo-black`}
 									>
-										No OAuth providers are currently enabled.
+										{t("noProvidersTitle")}
 									</p>
 									<p className={`${groteskFont.className} mt-2 text-sm leading-6 text-black/70`}>
-										Enable GitHub or Discord in the backend configuration and this page will update
-										automatically.
+										{t("noProvidersDescription")}
 									</p>
 								</div>
 							) : (
 								providers.map((provider) => {
 									const meta = providerMeta[provider as keyof typeof providerMeta] ?? {
-										label: `Continue with ${provider}`,
 										className: "bg-neo-paper !text-neo-black",
 										icon: null,
 									}
@@ -100,7 +98,11 @@ export default async function LoginPage() {
 														<Image src={meta.icon} alt="" aria-hidden="true" className="h-5 w-5" />
 													)}
 												</span>
-												{meta.label}
+												{provider === "github"
+													? t("continueWithGithub")
+													: provider === "discord"
+														? t("continueWithDiscord")
+														: t("continueWithProvider", { provider })}
 											</a>
 										</Button>
 									)

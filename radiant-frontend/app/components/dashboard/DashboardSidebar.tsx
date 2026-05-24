@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { usePathname } from "next/navigation"
 
 import radioStationSvg from "../../assets/icons/radio-station.svg"
@@ -13,17 +14,18 @@ import { cn } from "../../lib/utils"
 export function DashboardSidebar() {
 	const pathname = usePathname()
 	const currentUser = useOptionalCurrentUser()
+	const t = useTranslations("dashboard.nav")
 
 	const navItems = [
 		{
 			href: "/dashboard",
-			label: "Radios",
+			label: t("radios"),
 			icon: radioStationSvg,
 			isActive: pathname === "/dashboard" || pathname.startsWith("/dashboard/radios/"),
 		},
 		{
 			href: "/dashboard/settings",
-			label: "Settings",
+			label: t("settings"),
 			icon: settingsSvg,
 			isActive: pathname === "/dashboard/settings",
 		},

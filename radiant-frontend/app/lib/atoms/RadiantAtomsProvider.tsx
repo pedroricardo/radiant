@@ -1,18 +1,24 @@
 "use client"
 
-import { RegistryProvider, Result } from "@effect-atom/atom-react"
+import { RegistryProvider } from "@effect-atom/atom-react"
 import type { ReactNode } from "react"
 
-import { currentUserAtom, type CurrentUserEncoded } from "./radiantClient"
-import { Schema } from "effect"
-import { User } from "@radiant/client"
-import { Unauthorized } from "@radiant/client/contract"
+import { localeAtom } from "./localeAtom"
+import type { AppLocale } from "../i18n"
 
 type RadiantAtomsProviderProps = {
-	currentUser: CurrentUserEncoded | null
+	locale: AppLocale
 	children: ReactNode
 }
 
-export function RadiantAtomsProvider({ currentUser, children }: RadiantAtomsProviderProps) {
-	return <RegistryProvider initialValues={[[currentUserAtom, currentUser ? Result.success(Schema.decodeSync(User.User)(currentUser)) : Result.fail(new Unauthorized())]]}>{children}</RegistryProvider>
+export function RadiantAtomsProvider({ locale, children }: RadiantAtomsProviderProps) {
+	return (
+		<RegistryProvider
+			initialValues={[
+				[localeAtom, locale],
+			]}
+		>
+			{children}
+		</RegistryProvider>
+	)
 }

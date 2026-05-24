@@ -1,0 +1,96 @@
+{
+	"language": {
+		"label": "Language",
+		"pt": "Portuguese",
+		"en": "English"
+	},
+	"home": {
+		"nav": {
+			"login": "Sign in"
+		},
+		"hero": {
+			"title": "OWN THE AIR",
+			"line1": "Stop waiting for the right station to appear.",
+			"line2": "Start your own.",
+			"cta": "Get started"
+		},
+		"stats": {
+			"playoutLabel": "Playout",
+			"playoutValue": "Calendar driven",
+			"licenceLabel": "License",
+			"outputLabel": "Output",
+			"outputValue": "ICY ready"
+		}
+	},
+	"login": {
+		"kicker": "Authentication",
+		"title": "JOIN THE STATION",
+		"description": "Sign in with an available provider to access your radios, dashboard, and stream tools.",
+		"noProvidersTitle": "No OAuth providers are currently enabled.",
+		"noProvidersDescription": "Enable GitHub or Discord in the backend configuration and this page will update automatically.",
+		"continueWithGithub": "Continue with GitHub",
+		"continueWithDiscord": "Continue with Discord",
+		"continueWithProvider": "Continue with {provider}",
+		"unknownProvider": "Other"
+	},
+	"dashboard": {
+		"nav": {
+			"radios": "Radios",
+			"settings": "Settings"
+		}
+	},
+	"dashboardPicker": {
+		"badge": "Dashboard",
+		"title": "Choose a radio",
+		"description": "Pick a station to open the console, monitor automation and manage the library.",
+		"createRadio": "Create radio",
+		"empty": "You don't have any radios yet. Create your first station to get started."
+	},
+	"createRadio": {
+		"title": "Create radio",
+		"description": "Define the station name and base configuration. You can adjust the rest later in the radio console.",
+		"fields": {
+			"name": {
+				"label": "Name",
+				"placeholder": "Tokyo Hits"
+			},
+			"timezone": {
+				"label": "Timezone",
+				"placeholder": "Choose a timezone"
+			},
+			"description": {
+				"label": "Description",
+				"placeholder": "A short editorial note to identify the station."
+			},
+			"isPublic": {
+				"label": "Public radio",
+				"description": "Allows exposing the station publicly once the stream is ready."
+			}
+		},
+		"errors": {
+			"required": "Name and timezone are required.",
+			"createFailed": "Couldn't create the radio. Please try again."
+		},
+		"actions": {
+			"cancel": "Cancel",
+			"submit": "Create radio",
+			"submitting": "Creating..."
+		}
+	},
+	"dashboardSettings": {
+		"kicker": "Settings",
+		"title": "Workspace settings",
+		"description": "This area will hold account configuration, dashboard preferences and station options."
+	},
+	"radio": {
+		"nav": {
+			"schedule": "Schedule",
+			"settings": "Radio settings"
+		}
+	},
+	"radioSettings": {
+		"kicker": "Radio settings",
+		"title": "Station {radioId}",
+		"description": "This area will hold the configuration specific to this radio."
+	}
+}

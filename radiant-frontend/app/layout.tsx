@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
+import { NextIntlClientProvider } from "next-intl"
+import { getLocale, getMessages } from "next-intl/server"
 import "./globals.css"
-import { getCurrentUser } from "./lib/auth"
 import { RadiantAtomsProvider } from "./lib/atoms/RadiantAtomsProvider"
 import { groteskFont } from "./lib/fonts"
-import { User } from "@radiant/client"
-import { Schema, Option } from "effect"
+import { isLocale } from "./lib/i18n"
 
 export const metadata: Metadata = {
 	title: "Radiant",
@@ -17,12 +17,20 @@ export default async function RootLayout({
 }: Readonly<{
 	children: React.ReactNode
 }>) {
-	const currentUser = await getCurrentUser()
+	const [locale, messages] = await Promise.all([
+		getLocale(),
+		getMessages(),
+	])
+	const appLocale = isLocale(locale) ? locale : "pt"
 
 	return (
-		<html lang="en" className={`${groteskFont.variable} h-full antialiased`}>
+		<html lang={appLocale} className={`${groteskFont.variable} h-full antialiased`}>
 			<body className="min-h-full flex flex-col">
-				<RadiantAtomsProvider currentUser={Schema.encodeSync(Schema.NullOr(User.User))(Option.getOrNull(currentUser))}>{children}</RadiantAtomsProvider>
+				<NextIntlClientProvider locale={appLocale} messages={messages}>
+					<RadiantAtomsProvider locale={appLocale}>
+						{children}
+					</RadiantAtomsProvider>
+				</NextIntlClientProvider>
 			</body>
 		</html>
 	)
