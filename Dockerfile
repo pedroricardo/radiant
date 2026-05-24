@@ -10,6 +10,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=8080
+COPY . .
+RUN bun install
+RUN bun run build
 EXPOSE 8080
-
 CMD ["bash", "-c", "bun run discloud:start"]
