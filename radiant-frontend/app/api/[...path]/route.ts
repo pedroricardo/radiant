@@ -1,7 +1,8 @@
+import { registerNodeInstrumentation } from "../../../instrumentation.node"
 
 export const runtime = "nodejs"
 
-const forwardToBackend = async (request: Request) => globalWebHandler.handler(request)
+const forwardToBackend = async (request: Request) => registerNodeInstrumentation().then(() => globalWebHandler.handler(request))
 
 export const GET = forwardToBackend
 export const POST = forwardToBackend
