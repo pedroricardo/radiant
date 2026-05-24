@@ -1,4 +1,3 @@
-import { registerNodeInstrumentation } from "../../../../instrumentation.node"
 
 
 export const runtime = "nodejs"
@@ -10,7 +9,6 @@ const providerFrom = (request: Request) => {
 }
 
 export const GET = async (request: Request) => {
-	await registerNodeInstrumentation();
 	const provider = providerFrom(request)
 	if (provider.length === 0) {
 		return new Response("Missing OAuth provider", { status: 400 })

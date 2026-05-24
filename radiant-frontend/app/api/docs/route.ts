@@ -1,9 +1,7 @@
-import { registerNodeInstrumentation } from "../../../instrumentation.node"
 
 export const runtime = "nodejs"
 
 export const GET = async (request: Request) => {
-	await registerNodeInstrumentation();
 	const response = await globalWebHandler.handler(new Request(new URL("/api/docs", request.url), request))
 	const headers = new Headers(response.headers)
 
